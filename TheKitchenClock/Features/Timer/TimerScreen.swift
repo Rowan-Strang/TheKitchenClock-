@@ -20,7 +20,7 @@ struct TimerScreen: View {
 
             Button(action: {}) {
                 Text("Start")
-                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .frame(maxWidth: .infinity, minHeight: 128)
             }
                 .buttonStyle(.borderedProminent)
                 .accessibilityHint("Starting a timer will be added in the next milestone.")

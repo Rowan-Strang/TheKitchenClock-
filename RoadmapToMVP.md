@@ -48,11 +48,11 @@ Codex should handle most implementation and focused automated checks, with Xcode
 
 ### Milestone 1 — A running app
 
-- [ ] Establish the Xcode project for iPhone and iPad, targeting iOS/iPadOS 26+ and Swift 6.2+.
-- [ ] Create a small timer feature structure with state and behaviour separate from SwiftUI presentation.
-- [ ] Build the first screen around a large countdown and a large start control, using 30 seconds as the initial duration.
-- [ ] **User / hardware:** complete signing and device setup where needed, then launch on an iPhone and check the initial scale and readability from the countertop.
-- [ ] **Done when:** the app builds and runs, and the basic screen feels large, clear, and easy to reach.
+- [x] Establish the Xcode project for iPhone and iPad, targeting iOS/iPadOS 26+ and Swift 6.2+.
+- [x] Create a small timer feature structure with state and behaviour separate from SwiftUI presentation.
+- [x] Build the first screen around a large countdown and a large start control, using 30 seconds as the initial duration.
+- [x] **User / hardware:** complete signing and device setup where needed, then launch on an iPhone and check the initial scale and readability from the countertop.
+- [x] **Done when:** the app builds and runs, and the basic screen feels large, clear, and easy to reach.
 
 ### Milestone 2 — One useful timer
 
