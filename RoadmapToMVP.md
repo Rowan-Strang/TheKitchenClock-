@@ -12,7 +12,7 @@ The starting example is boiling bagels: set 30 seconds, start the timer, flip th
 - **Easy reuse.** Start the timer with a large control and run the same duration again with a tap when it finishes. Provide an obvious way to stop a running timer.
 - **Adjustable durations and saved presets.** Thirty seconds is a useful starting point, not a fixed limit. Save frequently used durations locally so they are easy to return to.
 - **Optional automatic repeat.** Press and hold to toggle repeat. Give immediate feedback and show clearly when repeat is enabled. Explain the hold interaction briefly so it does not depend on discovery.
-- **A gentle finish.** Use a short, noticeable completion sound while the app is open, supported by a clear visual change. The right sound needs to be judged in an actual kitchen.
+- **A clear finish.** Use a noticeable visual change so it is immediately obvious when the timer has finished.
 - **Open from a link.** Support a URL containing timer configuration, so a configured timer can be opened from elsewhere. Keep the initial payload small and document it when implemented.
 - **Reliable recovery.** Preserve enough information to restore the timer after switching apps, closing the app, or restarting the device.
 
@@ -20,7 +20,7 @@ The starting example is boiling bagels: set 30 seconds, start the timer, flip th
 
 Time spent outside the app still counts. If a timer has not expired when the user returns, show the correct remaining time. If it has expired, show the finished state and let the user continue from there.
 
-Automatic repeat continues while the app is visible. If a cycle expires while the app is away, it waits at finished until the user deliberately starts it again. Do not calculate unseen repeat cycles or play missed completion sounds.
+Automatic repeat continues while the app is visible. If a cycle expires while the app is away, it waits at finished until the user deliberately starts it again. Do not calculate unseen repeat cycles.
 
 MVP does not promise an alert while the app is in the background or the device is locked. It also does not show a countdown outside the main app. Reliable restoration is the requirement, including after a full device restart. Store the timer's timing information and state rather than relying on a countdown process to remain running.
 
@@ -56,12 +56,12 @@ Codex should handle most implementation and focused automated checks, with Xcode
 
 ### Milestone 2 — One useful timer
 
-- [ ] Add duration editing, start, stop, a clear finished state, and one-tap reuse of the same duration.
-- [ ] Base remaining time on a recorded deadline so display updates do not determine timing accuracy.
-- [ ] Add the foreground completion sound and visual feedback, with no repeated sound caused by screen updates.
-- [ ] Keep the display awake during active timing and restore normal behaviour when appropriate.
-- [ ] Add focused unit tests for the core timer transitions and completion behaviour.
-- [ ] **User / hardware:** time several bagel-style cycles; check touch targets, countdown readability, screen wake behaviour, and whether the sound is noticeable without being irritating.
+- [x] Add duration editing, start, stop, a clear finished state, and one-tap reuse of the same duration.
+- [x] Base remaining time on a recorded deadline so display updates do not determine timing accuracy.
+- [x] Add clear visual completion feedback that appears once when the timer reaches its finished state.
+- [x] Keep the display awake during active timing and restore normal behaviour when appropriate.
+- [x] Add focused unit tests for the core timer transitions and completion behaviour.
+- [ ] **User / hardware:** time several bagel-style cycles; check touch targets, countdown readability, screen wake behaviour, and whether the finished state is obvious at a glance.
 - [ ] **Done when:** a single timer is useful for actual cooking without presets or repeat mode.
 
 ### Milestone 3 — Reliable interruption and recovery
@@ -69,7 +69,7 @@ Codex should handle most implementation and focused automated checks, with Xcode
 - [ ] Save timing information and state whenever meaningful timer actions occur, so recovery does not depend on a clean app shutdown.
 - [ ] Restore the correct remaining time when returning before expiry, and the finished state when returning after expiry.
 - [ ] Preserve the selected duration and recover after app termination or a full device restart.
-- [ ] Avoid playing a completion sound for a timer that finished while away; keep background alerts outside this milestone.
+- [ ] Keep background alerts outside this milestone.
 - [ ] Test restoration before and after expiry, including stopped timers and missing saved state, using controllable time in unit tests.
 - [ ] **User / hardware:** switch apps and return before and after expiry, then repeat the checks after terminating the app and restarting the device.
 - [ ] **Done when:** returning to the app gives the expected timer state without needing a process to have kept running.
@@ -95,7 +95,7 @@ Codex should handle most implementation and focused automated checks, with Xcode
 
 ### Milestone 6 — Cook with it and finish MVP
 
-- [ ] Refine the main screen based on kitchen use: readability, reach, accidental input, sound, and the speed of starting another cycle.
+- [ ] Refine the main screen based on kitchen use: readability, reach, accidental input, clarity of the finished state, and the speed of starting another cycle.
 - [ ] Check the same experience on iPad, keeping the interface large and simple across the available space.
 - [ ] Run the focused unit tests and resolve remaining build issues; run SwiftLint if installed.
 - [ ] **User / hardware:** use the app during a real cooking session, then check the agreed recovery scenarios and the iPad layout on available hardware.

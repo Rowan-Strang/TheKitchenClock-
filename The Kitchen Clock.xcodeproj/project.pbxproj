@@ -14,6 +14,13 @@
 		A10000000000000000000005 /* TimerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* TimerViewModel.swift */; };
 		A10000000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* Assets.xcassets */; };
 		A10000000000000000000007 /* TimerViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* TimerViewModelTests.swift */; };
+		A10000000000000000000008 /* TimerClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* TimerClock.swift */; };
+		A10000000000000000000009 /* SystemTimerClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* SystemTimerClock.swift */; };
+		A1000000000000000000000A /* Duration+Timer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000023 /* Duration+Timer.swift */; };
+		A1000000000000000000000B /* TimerDurationFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000024 /* TimerDurationFormatter.swift */; };
+		A1000000000000000000000C /* DurationEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* DurationEditor.swift */; };
+		A1000000000000000000000D /* DurationComponentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000026 /* DurationComponentPicker.swift */; };
+		A1000000000000000000000E /* TestTimerClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000027 /* TestTimerClock.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,6 +43,13 @@
 		A10000000000000000000017 /* TimerViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerViewModelTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000018 /* The Kitchen Clock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "The Kitchen Clock.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000019 /* TheKitchenClockTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TheKitchenClockTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000020 /* TimerClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerClock.swift; sourceTree = "<group>"; };
+		A10000000000000000000022 /* SystemTimerClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemTimerClock.swift; sourceTree = "<group>"; };
+		A10000000000000000000023 /* Duration+Timer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Duration+Timer.swift"; sourceTree = "<group>"; };
+		A10000000000000000000024 /* TimerDurationFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerDurationFormatter.swift; sourceTree = "<group>"; };
+		A10000000000000000000025 /* DurationEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DurationEditor.swift; sourceTree = "<group>"; };
+		A10000000000000000000026 /* DurationComponentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DurationComponentPicker.swift; sourceTree = "<group>"; };
+		A10000000000000000000027 /* TestTimerClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestTimerClock.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000017 /* TimerViewModelTests.swift */,
+				A10000000000000000000027 /* TestTimerClock.swift */,
 			);
 			path = TheKitchenClockTests;
 			sourceTree = "<group>";
@@ -107,6 +122,12 @@
 				A10000000000000000000013 /* CountdownDisplay.swift */,
 				A10000000000000000000014 /* TimerState.swift */,
 				A10000000000000000000015 /* TimerViewModel.swift */,
+				A10000000000000000000020 /* TimerClock.swift */,
+				A10000000000000000000022 /* SystemTimerClock.swift */,
+				A10000000000000000000023 /* Duration+Timer.swift */,
+				A10000000000000000000024 /* TimerDurationFormatter.swift */,
+				A10000000000000000000025 /* DurationEditor.swift */,
+				A10000000000000000000026 /* DurationComponentPicker.swift */,
 			);
 			path = Timer;
 			sourceTree = "<group>";
@@ -213,6 +234,12 @@
 				A10000000000000000000003 /* CountdownDisplay.swift in Sources */,
 				A10000000000000000000004 /* TimerState.swift in Sources */,
 				A10000000000000000000005 /* TimerViewModel.swift in Sources */,
+				A10000000000000000000008 /* TimerClock.swift in Sources */,
+				A10000000000000000000009 /* SystemTimerClock.swift in Sources */,
+				A1000000000000000000000A /* Duration+Timer.swift in Sources */,
+				A1000000000000000000000B /* TimerDurationFormatter.swift in Sources */,
+				A1000000000000000000000C /* DurationEditor.swift in Sources */,
+				A1000000000000000000000D /* DurationComponentPicker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -221,6 +248,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000007 /* TimerViewModelTests.swift in Sources */,
+				A1000000000000000000000E /* TestTimerClock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,7 +341,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
+				SWIFT_VERSION = 6.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -343,7 +371,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
+				SWIFT_VERSION = 6.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -359,7 +387,8 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
+				SWIFT_VERSION = 6.2;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/The Kitchen Clock.app/The Kitchen Clock";
 			};
@@ -376,7 +405,8 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
+				SWIFT_VERSION = 6.2;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/The Kitchen Clock.app/The Kitchen Clock";
 			};

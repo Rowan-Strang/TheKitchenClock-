@@ -10,7 +10,7 @@ struct CountdownDisplay: View {
             .bold()
             .lineLimit(1)
             .minimumScaleFactor(0.55)
-            .accessibilityLabel("\\(text) remaining")
+            .accessibilityLabel("\(text) remaining")
     }
 }
 
