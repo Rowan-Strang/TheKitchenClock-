@@ -4,8 +4,8 @@ import Testing
 
 @MainActor
 struct TimerViewModelTests {
-    @Test func defaultTimerIsReadyForThirtySeconds() {
-        let viewModel = TimerViewModel(timerStateStore: InMemoryTimerStateStore())
+    @Test func defaultTimerIsReadyForThirtySeconds() async {
+        let viewModel = TimerViewModel(timerStateStore: InMemoryTimerStateStore(), alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(viewModel.selectedDuration == .seconds(30))
         #expect(viewModel.state == .ready)
@@ -13,8 +13,8 @@ struct TimerViewModelTests {
         #expect(viewModel.presets == [.defaultPreset])
     }
 
-    @Test func configuredDurationIsClampedToSupportedRange() {
-        let viewModel = TimerViewModel(selectedDuration: .zero, timerStateStore: InMemoryTimerStateStore())
+    @Test func configuredDurationIsClampedToSupportedRange() async {
+        let viewModel = TimerViewModel(selectedDuration: .zero, timerStateStore: InMemoryTimerStateStore(), alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(viewModel.selectedDuration == .seconds(1))
 
@@ -24,15 +24,16 @@ struct TimerViewModelTests {
         #expect(viewModel.displayText == "99:59:59")
     }
 
-    @Test func runningTimerUsesItsDeadlineForTheDisplayedRemainingTime() {
+    @Test func runningTimerUsesItsDeadlineForTheDisplayedRemainingTime() async {
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: InMemoryTimerStateStore()
+            timerStateStore: InMemoryTimerStateStore(),
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        viewModel.start()
+        await viewModel.start()
         clock.advance(by: .seconds(10))
         viewModel.refresh()
 
@@ -40,17 +41,18 @@ struct TimerViewModelTests {
         #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
     }
 
-    @Test func resetWhileRunningReturnsToSingleTimerModeAtTheConfiguredDuration() {
+    @Test func resetWhileRunningReturnsToSingleTimerModeAtTheConfiguredDuration() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        viewModel.toggleRepeat()
-        viewModel.start()
+        await viewModel.toggleRepeat()
+        await viewModel.start()
         clock.advance(by: .seconds(5))
         viewModel.reset()
 
@@ -60,22 +62,23 @@ struct TimerViewModelTests {
         #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
 
-        let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store)
+        let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(restoredViewModel.state == .ready)
         #expect(!restoredViewModel.isRepeatEnabled)
     }
 
-    @Test func expiryTransitionsOnceAndRequiresAcknowledgementBeforeAnotherStart() {
+    @Test func expiryTransitionsOnceAndRequiresAcknowledgementBeforeAnotherStart() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        viewModel.start()
+        await viewModel.start()
         clock.advance(by: .seconds(30))
         viewModel.refresh()
         viewModel.refresh()
@@ -87,28 +90,29 @@ struct TimerViewModelTests {
         #expect(viewModel.isAwaitingCompletionAcknowledgement)
         #expect(!viewModel.shouldShowToolbarControls)
 
-        viewModel.start()
+        await viewModel.start()
 
         #expect(viewModel.state == .finished)
         #expect(viewModel.displayText == "00:00")
     }
 
-    @Test func acknowledgingAFinishedSingleTimerReturnsItToReadyAtItsConfiguredDuration() {
+    @Test func acknowledgingAFinishedSingleTimerReturnsItToReadyAtItsConfiguredDuration() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        viewModel.start()
+        await viewModel.start()
         clock.advance(by: .seconds(30))
         viewModel.refresh()
 
         #expect(viewModel.isAwaitingCompletionAcknowledgement)
 
-        viewModel.acknowledgeCompletion()
+        await viewModel.acknowledgeCompletion()
 
         #expect(viewModel.state == .ready)
         #expect(viewModel.displayText == "00:30")
@@ -118,20 +122,21 @@ struct TimerViewModelTests {
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
     }
 
-    @Test func cancellingAFinishedSingleTimerMatchesAcknowledgement() {
+    @Test func cancellingAFinishedSingleTimerMatchesAcknowledgement() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        viewModel.start()
+        await viewModel.start()
         clock.advance(by: .seconds(30))
         viewModel.refresh()
 
-        viewModel.cancelAlarm()
+        await viewModel.cancelAlarm()
 
         #expect(viewModel.state == .ready)
         #expect(viewModel.displayText == "00:30")
@@ -140,80 +145,82 @@ struct TimerViewModelTests {
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
     }
 
-    @Test func missingSavedStateStartsWithTheDefaultTimer() {
-        let viewModel = TimerViewModel(timerStateStore: InMemoryTimerStateStore())
+    @Test func missingSavedStateStartsWithTheDefaultTimer() async {
+        let viewModel = TimerViewModel(timerStateStore: InMemoryTimerStateStore(), alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(viewModel.selectedDuration == .seconds(30))
         #expect(viewModel.state == .ready)
     }
 
-    @Test func savedReadyTimerRestoresItsSelectedDuration() {
+    @Test func savedReadyTimerRestoresItsSelectedDuration() async {
         let store = InMemoryTimerStateStore()
-        let firstViewModel = TimerViewModel(timerStateStore: store)
+        let firstViewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         firstViewModel.configure(duration: .seconds(75))
 
-        let restoredViewModel = TimerViewModel(timerStateStore: store)
+        let restoredViewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(restoredViewModel.selectedDuration == .seconds(75))
         #expect(restoredViewModel.state == .ready)
         #expect(restoredViewModel.displayText == "01:15")
     }
 
-    @Test func runningTimerRestoresItsRemainingTimeBeforeExpiry() {
+    @Test func runningTimerRestoresItsRemainingTimeBeforeExpiry() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let firstViewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        firstViewModel.start()
+        await firstViewModel.start()
         clock.advance(by: .seconds(10))
 
-        let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store)
+        let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(restoredViewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
         #expect(restoredViewModel.displayText == "00:20")
     }
 
-    @Test func expiredRunningTimerRestoresAsFinished() {
+    @Test func expiredRunningTimerRestoresAsFinished() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let firstViewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        firstViewModel.start()
+        await firstViewModel.start()
         clock.advance(by: .seconds(30))
 
-        let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store)
+        let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(restoredViewModel.state == .finished)
         #expect(restoredViewModel.displayText == "00:00")
         #expect(store.snapshot?.state == .finished)
     }
 
-    @Test func resetAndConfigurationReplaceTheSavedSnapshot() {
+    @Test func resetAndConfigurationReplaceTheSavedSnapshot() async {
         let store = InMemoryTimerStateStore()
-        let viewModel = TimerViewModel(timerStateStore: store)
+        let viewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         viewModel.configure(duration: .seconds(75))
 
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 75, state: .ready))
 
-        viewModel.start()
+        await viewModel.start()
         viewModel.reset()
 
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 75, state: .ready))
     }
 
-    @Test func presetsAreSavedOnceSortedAndPersisted() {
+    @Test func presetsAreSavedOnceSortedAndPersisted() async {
         let store = InMemoryTimerStateStore()
-        let viewModel = TimerViewModel(timerStateStore: store)
+        let viewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         viewModel.configure(duration: .seconds(75))
         viewModel.saveSelectedDurationAsPreset()
@@ -234,76 +241,78 @@ struct TimerViewModelTests {
         #expect(viewModel.selectedDuration == .seconds(75))
         #expect(viewModel.presets == savedPresets)
 
-        let selectedPresetViewModel = TimerViewModel(timerStateStore: store)
+        let selectedPresetViewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(selectedPresetViewModel.selectedDuration == .seconds(75))
         #expect(selectedPresetViewModel.presets == savedPresets)
 
         viewModel.removePreset(TimerPreset(duration: .seconds(60)))
 
-        let restoredViewModel = TimerViewModel(timerStateStore: store)
+        let restoredViewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(restoredViewModel.presets == [.defaultPreset, TimerPreset(duration: .seconds(75))])
         #expect(restoredViewModel.selectedDuration == .seconds(75))
     }
 
-    @Test func repeatSettingIsPersisted() {
+    @Test func repeatSettingIsPersisted() async {
         let store = InMemoryTimerStateStore()
-        let viewModel = TimerViewModel(timerStateStore: store)
+        let viewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
-        viewModel.toggleRepeat()
+        await viewModel.toggleRepeat()
 
-        let restoredViewModel = TimerViewModel(timerStateStore: store)
+        let restoredViewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(restoredViewModel.isRepeatEnabled)
         #expect(store.snapshot?.isRepeatEnabled == true)
 
-        restoredViewModel.toggleRepeat()
+        await restoredViewModel.toggleRepeat()
 
-        let disabledViewModel = TimerViewModel(timerStateStore: store)
+        let disabledViewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(!disabledViewModel.isRepeatEnabled)
         #expect(store.snapshot?.isRepeatEnabled == false)
     }
 
-    @Test func enablingRepeatAndStartingStartsReadyAndFinishedTimersAtTheirConfiguredDuration() {
+    @Test func enablingRepeatAndStartingStartsReadyAndFinishedTimersAtTheirConfiguredDuration() async {
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: InMemoryTimerStateStore()
+            timerStateStore: InMemoryTimerStateStore(),
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        viewModel.enableRepeatAndStart()
+        await viewModel.enableRepeatAndStart()
 
         #expect(viewModel.isRepeatEnabled)
         #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
 
         clock.advance(by: .seconds(30))
-        viewModel.toggleRepeat()
+        await viewModel.toggleRepeat()
         viewModel.refresh()
 
         #expect(viewModel.state == .finished)
 
-        viewModel.enableRepeatAndStart()
+        await viewModel.enableRepeatAndStart()
 
         #expect(viewModel.isRepeatEnabled)
         #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 60)))
         #expect(viewModel.displayText == "00:30")
     }
 
-    @Test func foregroundRepeatShowsOneAcknowledgementWhileTheNextCycleRuns() {
+    @Test func foregroundRepeatShowsOneAcknowledgementWhileTheNextCycleRuns() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        viewModel.applicationDidBecomeActive()
-        viewModel.toggleRepeat()
-        viewModel.start()
+        await viewModel.applicationDidBecomeActive()
+        await viewModel.toggleRepeat()
+        await viewModel.start()
         clock.advance(by: .seconds(30))
         viewModel.refresh()
 
@@ -321,7 +330,7 @@ struct TimerViewModelTests {
         #expect(viewModel.isAwaitingRepeatCycleAcknowledgement)
         #expect(viewModel.completionCount == 2)
 
-        viewModel.acknowledgeCompletion()
+        await viewModel.acknowledgeCompletion()
 
         #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
         #expect(viewModel.shouldShowToolbarControls)
@@ -330,24 +339,25 @@ struct TimerViewModelTests {
         #expect(store.snapshot?.isAwaitingRepeatCycleAcknowledgement == false)
     }
 
-    @Test func cancellingARepeatingAlarmStopsTheCurrentAndFutureCycles() {
+    @Test func cancellingARepeatingAlarmStopsTheCurrentAndFutureCycles() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        viewModel.applicationDidBecomeActive()
-        viewModel.enableRepeatAndStart()
+        await viewModel.applicationDidBecomeActive()
+        await viewModel.enableRepeatAndStart()
         clock.advance(by: .seconds(30))
         viewModel.refresh()
 
         #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 60)))
         #expect(viewModel.isAwaitingRepeatCycleAcknowledgement)
 
-        viewModel.cancelAlarm()
+        await viewModel.cancelAlarm()
 
         #expect(viewModel.state == .ready)
         #expect(viewModel.displayText == "00:30")
@@ -357,22 +367,23 @@ struct TimerViewModelTests {
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
     }
 
-    @Test func elapsedRepeatTimerContinuesWhenTheAppReturns() {
+    @Test func elapsedRepeatTimerContinuesWhenTheAppReturns() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        viewModel.applicationDidBecomeActive()
-        viewModel.toggleRepeat()
-        viewModel.start()
+        await viewModel.applicationDidBecomeActive()
+        await viewModel.toggleRepeat()
+        await viewModel.start()
         viewModel.applicationDidBecomeInactive()
         clock.advance(by: .seconds(30))
 
-        viewModel.applicationDidBecomeActive()
+        await viewModel.applicationDidBecomeActive()
 
         #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 60)))
         #expect(viewModel.isRepeatEnabled)
@@ -380,22 +391,23 @@ struct TimerViewModelTests {
         #expect(viewModel.displayText == "00:30")
     }
 
-    @Test func elapsedRepeatTimerReconstructsTheLatestCycleAfterLaunch() {
+    @Test func elapsedRepeatTimerReconstructsTheLatestCycleAfterLaunch() async {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let firstViewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
-            timerStateStore: store
+            timerStateStore: store,
+            alarmScheduler: TestTimerAlarmScheduler()
         )
 
-        firstViewModel.applicationDidBecomeActive()
-        firstViewModel.toggleRepeat()
-        firstViewModel.start()
+        await firstViewModel.applicationDidBecomeActive()
+        await firstViewModel.toggleRepeat()
+        await firstViewModel.start()
         firstViewModel.applicationDidBecomeInactive()
         clock.advance(by: .seconds(95))
 
-        let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store)
+        let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(restoredViewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 120)))
         #expect(restoredViewModel.isRepeatEnabled)
@@ -404,7 +416,7 @@ struct TimerViewModelTests {
         #expect(restoredViewModel.completionCount == 1)
     }
 
-    @Test func legacySnapshotDecodesWithMilestoneFourDefaults() throws {
+    @Test func legacySnapshotDecodesWithMilestoneFourDefaults() async throws {
         let data = Data("""
         {
           "selectedDurationSeconds": 30,
@@ -419,7 +431,7 @@ struct TimerViewModelTests {
         #expect(!snapshot.isAwaitingRepeatCycleAcknowledgement)
     }
 
-    @Test func corruptUserDefaultsDataFallsBackToTheDefaultTimer() throws {
+    @Test func corruptUserDefaultsDataFallsBackToTheDefaultTimer() async throws {
         let suiteName = "TimerViewModelTests.corruptUserDefaultsData"
         let userDefaults = try #require(UserDefaults(suiteName: suiteName))
         userDefaults.removePersistentDomain(forName: suiteName)
@@ -428,19 +440,19 @@ struct TimerViewModelTests {
         }
         userDefaults.set(Data("not a timer snapshot".utf8), forKey: UserDefaultsTimerStateStore.storageKey)
 
-        let viewModel = TimerViewModel(timerStateStore: UserDefaultsTimerStateStore(userDefaults: userDefaults))
+        let viewModel = TimerViewModel(timerStateStore: UserDefaultsTimerStateStore(userDefaults: userDefaults), alarmScheduler: TestTimerAlarmScheduler())
 
         #expect(viewModel.selectedDuration == .seconds(30))
         #expect(viewModel.state == .ready)
         #expect(userDefaults.data(forKey: UserDefaultsTimerStateStore.storageKey) == nil)
     }
 
-    @Test func timerLinkConfiguresAReadyTimerAndDisablesRepeat() throws {
+    @Test func timerLinkConfiguresAReadyTimerAndDisablesRepeat() async throws {
         let store = InMemoryTimerStateStore()
-        let viewModel = TimerViewModel(timerStateStore: store)
+        let viewModel = TimerViewModel(timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
         let request = try TimerLinkParser.parse(try url("kitchenclock://timer?seconds=75"))
 
-        viewModel.toggleRepeat()
+        await viewModel.toggleRepeat()
         let result = viewModel.applyTimerLink(request)
 
         #expect(result == .configured)
@@ -451,13 +463,13 @@ struct TimerViewModelTests {
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 75, state: .ready))
     }
 
-    @Test func timerLinkConfiguresAFinishedTimer() throws {
+    @Test func timerLinkConfiguresAFinishedTimer() async throws {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
-        let viewModel = TimerViewModel(clock: clock, timerStateStore: store)
+        let viewModel = TimerViewModel(clock: clock, timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
         let request = try TimerLinkParser.parse(try url("kitchenclock://timer?seconds=75"))
 
-        viewModel.start()
+        await viewModel.start()
         clock.advance(by: .seconds(30))
         viewModel.refresh()
 
@@ -472,14 +484,14 @@ struct TimerViewModelTests {
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 75, state: .ready))
     }
 
-    @Test func timerLinkDoesNotReplaceARunningTimer() throws {
+    @Test func timerLinkDoesNotReplaceARunningTimer() async throws {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
-        let viewModel = TimerViewModel(clock: clock, timerStateStore: store)
+        let viewModel = TimerViewModel(clock: clock, timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler())
         let request = try TimerLinkParser.parse(try url("kitchenclock://timer?seconds=75"))
 
-        viewModel.toggleRepeat()
-        viewModel.start()
+        await viewModel.toggleRepeat()
+        await viewModel.start()
         let originalState = viewModel.state
         let originalSnapshot = store.snapshot
 

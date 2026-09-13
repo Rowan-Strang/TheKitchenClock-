@@ -14,6 +14,7 @@ struct TimerScreen: View {
         NavigationStack {
             TimerSurfaceButton(
                 isReady: viewModel.state == .ready,
+                isStarting: viewModel.isStarting,
                 isAwaitingCompletionAcknowledgement: viewModel.isAwaitingCompletionAcknowledgement,
                 isAwaitingRepeatCycleAcknowledgement: viewModel.isAwaitingRepeatCycleAcknowledgement,
                 accessibilityValue: viewModel.displayText,
@@ -79,9 +80,13 @@ struct TimerScreen: View {
                         if viewModel.isRunning || viewModel.isRepeatEnabled {
                             Button(
                                 viewModel.isRepeatEnabled ? "Turn Repeat Off" : "Turn Repeat On",
-                                systemImage: viewModel.isRepeatEnabled ? "repeat.1" : "repeat",
-                                action: viewModel.toggleRepeat
-                            )
+                                systemImage: viewModel.isRepeatEnabled ? "repeat.1" : "repeat"
+                            ) {
+                                Task {
+                                    await viewModel.toggleRepeat()
+                                }
+                            }
+                            .disabled(viewModel.isStarting)
                         }
                     }
                 }
@@ -111,9 +116,19 @@ struct TimerScreen: View {
         } message: {
             Text("Reset the running timer before opening another timer link.")
         }
+        .alert(
+            viewModel.alarmIssue?.title ?? "Alarm Not Scheduled",
+            isPresented: alarmIssueIsPresented
+        ) {
+            Button("OK", action: viewModel.dismissAlarmIssue)
+        } message: {
+            Text(viewModel.alarmIssue?.message ?? "")
+        }
         .onOpenURL(perform: handleIncomingURL)
         .onAppear {
-            updateApplicationActivity()
+            Task {
+                await updateApplicationActivity()
+            }
             updateIdleTimerState()
         }
         .onDisappear {
@@ -121,18 +136,31 @@ struct TimerScreen: View {
             UIApplication.shared.isIdleTimerDisabled = false
         }
         .onChange(of: scenePhase) { _, _ in
-            updateApplicationActivity()
+            Task {
+                await updateApplicationActivity()
+            }
             updateIdleTimerState()
         }
+    }
+
+    private var alarmIssueIsPresented: Binding<Bool> {
+        Binding(
+            get: { viewModel.alarmIssue != nil },
+            set: { isPresented in
+                if !isPresented {
+                    viewModel.dismissAlarmIssue()
+                }
+            }
+        )
     }
 
     private func updateIdleTimerState() {
         UIApplication.shared.isIdleTimerDisabled = scenePhase == .active
     }
 
-    private func updateApplicationActivity() {
+    private func updateApplicationActivity() async {
         if scenePhase == .active {
-            viewModel.applicationDidBecomeActive()
+            await viewModel.applicationDidBecomeActive()
         } else {
             viewModel.applicationDidBecomeInactive()
         }

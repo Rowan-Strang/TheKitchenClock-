@@ -34,6 +34,18 @@
 		A1000000000000000000003F /* TimerLinkApplicationResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000040 /* TimerLinkApplicationResult.swift */; };
 		A10000000000000000000090 /* TimerLinkParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000091 /* TimerLinkParserTests.swift */; };
 		A10000000000000000000093 /* AlarmShakeEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000094 /* AlarmShakeEffect.swift */; };
+		B10000000000000000000001 /* TimerAlarmAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* TimerAlarmAuthorization.swift */; };
+		B10000000000000000000002 /* TimerAlarmLoopContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* TimerAlarmLoopContext.swift */; };
+		B10000000000000000000003 /* TimerAlarmScheduling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* TimerAlarmScheduling.swift */; };
+		B10000000000000000000004 /* TimerAlarmMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* TimerAlarmMetadata.swift */; };
+		B10000000000000000000005 /* SystemTimerAlarmScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* SystemTimerAlarmScheduler.swift */; };
+		B10000000000000000000006 /* PersistedLoopAlarmEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* PersistedLoopAlarmEntry.swift */; };
+		B10000000000000000000007 /* PersistedLoopAlarmSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* PersistedLoopAlarmSession.swift */; };
+		B10000000000000000000008 /* TimerAlarmIssue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* TimerAlarmIssue.swift */; };
+		B10000000000000000000009 /* LoopAlarmQueueCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000019 /* LoopAlarmQueueCoordinator.swift */; };
+		B1000000000000000000000A /* LoopAlarmStopIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001A /* LoopAlarmStopIntent.swift */; };
+		B1000000000000000000000B /* TestTimerAlarmScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001B /* TestTimerAlarmScheduler.swift */; };
+		B1000000000000000000000C /* TimerAlarmIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001C /* TimerAlarmIntegrationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,6 +89,18 @@
 		A10000000000000000000091 /* TimerLinkParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerLinkParserTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000092 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000094 /* AlarmShakeEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmShakeEffect.swift; sourceTree = "<group>"; };
+		B10000000000000000000011 /* TimerAlarmAuthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAlarmAuthorization.swift; sourceTree = "<group>"; };
+		B10000000000000000000012 /* TimerAlarmLoopContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAlarmLoopContext.swift; sourceTree = "<group>"; };
+		B10000000000000000000013 /* TimerAlarmScheduling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAlarmScheduling.swift; sourceTree = "<group>"; };
+		B10000000000000000000014 /* TimerAlarmMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAlarmMetadata.swift; sourceTree = "<group>"; };
+		B10000000000000000000015 /* SystemTimerAlarmScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemTimerAlarmScheduler.swift; sourceTree = "<group>"; };
+		B10000000000000000000016 /* PersistedLoopAlarmEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistedLoopAlarmEntry.swift; sourceTree = "<group>"; };
+		B10000000000000000000017 /* PersistedLoopAlarmSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistedLoopAlarmSession.swift; sourceTree = "<group>"; };
+		B10000000000000000000018 /* TimerAlarmIssue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAlarmIssue.swift; sourceTree = "<group>"; };
+		B10000000000000000000019 /* LoopAlarmQueueCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopAlarmQueueCoordinator.swift; sourceTree = "<group>"; };
+		B1000000000000000000001A /* LoopAlarmStopIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopAlarmStopIntent.swift; sourceTree = "<group>"; };
+		B1000000000000000000001B /* TestTimerAlarmScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestTimerAlarmScheduler.swift; sourceTree = "<group>"; };
+		B1000000000000000000001C /* TimerAlarmIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAlarmIntegrationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +148,8 @@
 				A10000000000000000000027 /* TestTimerClock.swift */,
 				A1000000000000000000002C /* InMemoryTimerStateStore.swift */,
 				A10000000000000000000091 /* TimerLinkParserTests.swift */,
+				B1000000000000000000001B /* TestTimerAlarmScheduler.swift */,
+				B1000000000000000000001C /* TimerAlarmIntegrationTests.swift */,
 			);
 			path = TheKitchenClockTests;
 			sourceTree = "<group>";
@@ -169,6 +195,16 @@
 				A1000000000000000000003E /* TimerLinkParser.swift */,
 				A10000000000000000000040 /* TimerLinkApplicationResult.swift */,
 				A10000000000000000000094 /* AlarmShakeEffect.swift */,
+				B10000000000000000000011 /* TimerAlarmAuthorization.swift */,
+				B10000000000000000000012 /* TimerAlarmLoopContext.swift */,
+				B10000000000000000000013 /* TimerAlarmScheduling.swift */,
+				B10000000000000000000014 /* TimerAlarmMetadata.swift */,
+				B10000000000000000000015 /* SystemTimerAlarmScheduler.swift */,
+				B10000000000000000000016 /* PersistedLoopAlarmEntry.swift */,
+				B10000000000000000000017 /* PersistedLoopAlarmSession.swift */,
+				B10000000000000000000018 /* TimerAlarmIssue.swift */,
+				B10000000000000000000019 /* LoopAlarmQueueCoordinator.swift */,
+				B1000000000000000000001A /* LoopAlarmStopIntent.swift */,
 			);
 			path = Timer;
 			sourceTree = "<group>";
@@ -292,6 +328,16 @@
 				A1000000000000000000003D /* TimerLinkParser.swift in Sources */,
 				A1000000000000000000003F /* TimerLinkApplicationResult.swift in Sources */,
 				A10000000000000000000093 /* AlarmShakeEffect.swift in Sources */,
+				B10000000000000000000001 /* TimerAlarmAuthorization.swift in Sources */,
+				B10000000000000000000002 /* TimerAlarmLoopContext.swift in Sources */,
+				B10000000000000000000003 /* TimerAlarmScheduling.swift in Sources */,
+				B10000000000000000000004 /* TimerAlarmMetadata.swift in Sources */,
+				B10000000000000000000005 /* SystemTimerAlarmScheduler.swift in Sources */,
+				B10000000000000000000006 /* PersistedLoopAlarmEntry.swift in Sources */,
+				B10000000000000000000007 /* PersistedLoopAlarmSession.swift in Sources */,
+				B10000000000000000000008 /* TimerAlarmIssue.swift in Sources */,
+				B10000000000000000000009 /* LoopAlarmQueueCoordinator.swift in Sources */,
+				B1000000000000000000000A /* LoopAlarmStopIntent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -303,6 +349,8 @@
 				A1000000000000000000000E /* TestTimerClock.swift in Sources */,
 				A1000000000000000000001C /* InMemoryTimerStateStore.swift in Sources */,
 				A10000000000000000000090 /* TimerLinkParserTests.swift in Sources */,
+				B1000000000000000000000B /* TestTimerAlarmScheduler.swift in Sources */,
+				B1000000000000000000000C /* TimerAlarmIntegrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

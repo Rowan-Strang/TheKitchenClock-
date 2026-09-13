@@ -2,18 +2,23 @@ import SwiftUI
 
 struct TimerSurfaceButton<Content: View>: View {
     let isReady: Bool
+    let isStarting: Bool
     let isAwaitingCompletionAcknowledgement: Bool
     let isAwaitingRepeatCycleAcknowledgement: Bool
     let accessibilityValue: String
-    let onStart: () -> Void
-    let onEnableRepeatAndStart: () -> Void
-    let onAcknowledge: () -> Void
-    let onCancelAlarm: () -> Void
+    let onStart: () async -> Void
+    let onEnableRepeatAndStart: () async -> Void
+    let onAcknowledge: () async -> Void
+    let onCancelAlarm: () async -> Void
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         if isReady {
-            Button(action: onStart) {
+            Button {
+                Task {
+                    await onStart()
+                }
+            } label: {
                 content()
                     .background {
                         Rectangle().fill(.clear)
@@ -21,20 +26,29 @@ struct TimerSurfaceButton<Content: View>: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            .disabled(isStarting)
             .accessibilityLabel("Start timer")
             .accessibilityValue(accessibilityValue)
             .accessibilityHint("Double-tap to start. Use the Start Repeating Timer action to enable repeat and start.")
             .accessibilityAction(named: "Start Repeating Timer") {
-                onEnableRepeatAndStart()
+                Task {
+                    await onEnableRepeatAndStart()
+                }
             }
             .highPriorityGesture(
                 LongPressGesture(minimumDuration: 0.75)
                     .onEnded { _ in
-                        onEnableRepeatAndStart()
+                        Task {
+                            await onEnableRepeatAndStart()
+                        }
                     }
             )
         } else if isAwaitingCompletionAcknowledgement {
-            Button(action: onAcknowledge) {
+            Button {
+                Task {
+                    await onAcknowledge()
+                }
+            } label: {
                 content()
                     .background {
                         Rectangle().fill(.clear)
@@ -50,12 +64,16 @@ struct TimerSurfaceButton<Content: View>: View {
                     : "Double-tap or touch and hold to dismiss the alarm and return to the configured duration."
             )
             .accessibilityAction(named: isAwaitingRepeatCycleAcknowledgement ? "Stop Repeating Timer" : "Clear Timer Alarm") {
-                onCancelAlarm()
+                Task {
+                    await onCancelAlarm()
+                }
             }
             .highPriorityGesture(
                 LongPressGesture(minimumDuration: 0.75)
                     .onEnded { _ in
-                        onCancelAlarm()
+                        Task {
+                            await onCancelAlarm()
+                        }
                     }
             )
         } else {

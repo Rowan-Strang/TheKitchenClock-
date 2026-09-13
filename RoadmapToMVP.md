@@ -22,7 +22,7 @@ Time spent outside the app still counts. If a timer has not expired when the use
 
 Automatic repeat follows its configured schedule while the app is visible and is reconstructed from its recorded deadline when the app returns. If one or more repeat cycles expire while away, show one completion acknowledgement while the current cycle is already running. Do not calculate or display a count of unseen cycles.
 
-MVP does not promise an alert while the app is in the background or the device is locked. It also does not show a countdown outside the main app. Reliable restoration is the requirement, including after a full device restart. Store the timer's timing information and state rather than relying on a countdown process to remain running.
+AlarmKit provides a stock alert while the app is in the background or the device is locked. The app does not show a countdown outside the main screen. Reliable restoration remains a requirement, including after a full device restart, so timing and alarm queue state are stored rather than relying on a countdown process to remain running.
 
 ### Design and project direction
 
@@ -36,7 +36,7 @@ This timer may eventually become part of a larger cooking, shopping, or planning
 
 ### After MVP
 
-Voice control, on-device generated colour themes, generated cooking imagery, and broader cooking, shopping, and planning experiences can be revisited after the basic timer works well. Background alerts and a countdown outside the app are also later work.
+Voice control, on-device generated colour themes, generated cooking imagery, and broader cooking, shopping, and planning experiences can be revisited after the basic timer works well. A countdown outside the app remains later work.
 
 Dedicated VoiceOver and Dynamic Type validation are outside the MVP testing scope. Continue using native controls and semantic text styles as the baseline.
 
@@ -100,5 +100,13 @@ Codex should handle most implementation and focused automated checks, with Xcode
 - [ ] Run the focused unit tests and resolve remaining build issues; run SwiftLint if installed.
 - [ ] **User / hardware:** use the app during a real cooking session, then check the agreed recovery scenarios and the iPad layout on available hardware.
 - [ ] **Done when:** the single-timer experience is quick, clear, and dependable, with repeat, presets, links, and recovery working as described above.
+
+### Milestone 7 — AlarmKit alerts
+
+- [x] Schedule a stock one-shot AlarmKit alert at the timer deadline, with only Stop or Dismiss and no snooze.
+- [x] Maintain a rolling queue of up to four fixed-date alerts for repeat mode and replenish it from the system stop action.
+- [x] Cancel or retain queued alarms consistently when repeat is disabled, the timer is acknowledged, or the timer is reset.
+- [x] Persist and reconcile alarm identifiers across launches, with focused tests for failure and recovery behavior.
+- [ ] **User / hardware:** verify authorization, locked/background firing, repeat replenishment, Silent/Focus behavior, and queue cancellation on an iPhone.
 
 MVP ends here. Use what cooking with this version teaches us to decide what comes next.

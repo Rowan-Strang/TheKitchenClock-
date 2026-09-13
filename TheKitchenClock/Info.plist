@@ -35,6 +35,8 @@
 	</array>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.food-and-drink</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>The Kitchen Clock uses alarms to alert you when a timer finishes.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
