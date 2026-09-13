@@ -26,4 +26,12 @@ enum TimerState: Equatable {
             false
         }
     }
+
+    var isPaused: Bool {
+        if case .paused = self {
+            true
+        } else {
+            false
+        }
+    }
 }

@@ -4,6 +4,7 @@ import UIKit
 struct TimerScreen: View {
     @State private var viewModel = TimerViewModel()
     @State private var isPresentingDurationEditor = false
+    @State private var isPresentingPresets = false
     @State private var isConfirmingPause = false
     @State private var isConfirmingReset = false
     @Environment(\.scenePhase) private var scenePhase
@@ -14,22 +15,40 @@ struct TimerScreen: View {
                 Spacer(minLength: 0)
 
                 VStack {
-                    Text(viewModel.state.title)
-                        .font(.headline)
-                        .foregroundStyle(statusColor)
-                        .accessibilityAddTraits(viewModel.isRunning ? .updatesFrequently : [])
+                    if viewModel.isAwaitingRepeatCycleAcknowledgement {
+                        RepeatCycleAcknowledgement(onAcknowledge: viewModel.acknowledgeRepeatCycleCompletion)
+                    } else {
+                        Text(viewModel.state.title)
+                            .font(.headline)
+                            .foregroundStyle(statusColor)
+                            .accessibilityAddTraits(viewModel.isRunning ? .updatesFrequently : [])
 
-                    CountdownDisplay(text: viewModel.displayText)
+                        if viewModel.isRepeatEnabled {
+                            Label("Repeat On", systemImage: "repeat")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        CountdownDisplay(text: viewModel.displayText)
+                    }
                 }
                 .frame(maxWidth: .infinity)
 
                 Spacer(minLength: 0)
 
                 if !viewModel.isRunning {
-                    Button(viewModel.primaryActionTitle, action: viewModel.start)
-                        .frame(maxWidth: .infinity, minHeight: 128)
-                        .buttonStyle(.borderedProminent)
-                        .accessibilityHint(primaryActionHint)
+                    VStack {
+                        RepeatStartButton(
+                            title: viewModel.primaryActionTitle,
+                            hint: primaryActionHint,
+                            onStart: viewModel.start,
+                            onToggleRepeatAndStart: viewModel.toggleRepeatAndStart
+                        )
+
+                        Text("Press and hold to toggle repeat and restart.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .padding()
@@ -41,14 +60,30 @@ struct TimerScreen: View {
                         Button("Pause", systemImage: "pause.fill") {
                             isConfirmingPause = true
                         }
+                    }
 
+                    if viewModel.isRunning || viewModel.state.isPaused {
                         Button("Reset", systemImage: "arrow.counterclockwise") {
                             isConfirmingReset = true
                         }
-                    } else {
+                    }
+
+                    if !viewModel.isRunning && !viewModel.state.isPaused {
+                        Button("Presets", systemImage: "bookmark") {
+                            isPresentingPresets = true
+                        }
+
                         Button("Edit Duration", systemImage: "slider.horizontal.3") {
                             isPresentingDurationEditor = true
                         }
+                    }
+
+                    if viewModel.isRunning || viewModel.isRepeatEnabled {
+                        Button(
+                            viewModel.isRepeatEnabled ? "Turn Repeat Off" : "Turn Repeat On",
+                            systemImage: "repeat",
+                            action: viewModel.toggleRepeat
+                        )
                     }
                 }
             }
@@ -56,6 +91,16 @@ struct TimerScreen: View {
         .sheet(isPresented: $isPresentingDurationEditor) {
             DurationEditor(duration: viewModel.selectedDuration, onSave: viewModel.configure)
                 .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $isPresentingPresets) {
+            PresetsSheet(
+                presets: viewModel.presets,
+                selectedDuration: viewModel.selectedDuration,
+                onSelect: viewModel.configure,
+                onSaveSelectedDuration: viewModel.saveSelectedDurationAsPreset,
+                onRemove: viewModel.removePreset
+            )
+            .presentationDetents([.medium])
         }
         .confirmationDialog("Pause timer?", isPresented: $isConfirmingPause, titleVisibility: .visible) {
             Button("Pause Timer", action: viewModel.pause)
@@ -68,14 +113,15 @@ struct TimerScreen: View {
             Text("The timer will return to its full configured duration.")
         }
         .onAppear {
-            viewModel.refresh()
+            updateApplicationActivity()
             updateIdleTimerState()
         }
         .onDisappear {
+            viewModel.applicationDidBecomeInactive()
             UIApplication.shared.isIdleTimerDisabled = false
         }
         .onChange(of: scenePhase) { _, _ in
-            viewModel.refresh()
+            updateApplicationActivity()
             updateIdleTimerState()
         }
         .onChange(of: viewModel.isRunning) { _, _ in
@@ -109,6 +155,14 @@ struct TimerScreen: View {
 
     private func updateIdleTimerState() {
         UIApplication.shared.isIdleTimerDisabled = viewModel.isRunning && scenePhase == .active
+    }
+
+    private func updateApplicationActivity() {
+        if scenePhase == .active {
+            viewModel.applicationDidBecomeActive()
+        } else {
+            viewModel.applicationDidBecomeInactive()
+        }
     }
 }
 

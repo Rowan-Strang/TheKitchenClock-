@@ -11,11 +11,15 @@ final class TimerViewModel {
     private(set) var selectedDuration: Duration
     private(set) var state: TimerState
     private(set) var completionCount = 0
+    private(set) var presets: [TimerPreset]
+    private(set) var isRepeatEnabled: Bool
+    private(set) var isAwaitingRepeatCycleAcknowledgement: Bool
 
     @ObservationIgnored private let clock: any TimerClock
     @ObservationIgnored private let timerStateStore: any TimerStateStore
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     private var currentDate: Date
+    private var isApplicationActive = false
 
     init(
         selectedDuration: Duration = .seconds(30),
@@ -28,17 +32,23 @@ final class TimerViewModel {
         self.currentDate = clock.now()
         self.selectedDuration = Self.clampedDuration(selectedDuration)
         self.state = state
+        self.presets = [.defaultPreset]
+        self.isRepeatEnabled = false
+        self.isAwaitingRepeatCycleAcknowledgement = false
 
         if let snapshot = timerStateStore.load() {
             if let restoredTimer = Self.restore(from: snapshot) {
                 self.selectedDuration = restoredTimer.selectedDuration
                 self.state = restoredTimer.state
+                self.presets = restoredTimer.presets
+                self.isRepeatEnabled = restoredTimer.isRepeatEnabled
+                self.isAwaitingRepeatCycleAcknowledgement = restoredTimer.isAwaitingRepeatCycleAcknowledgement
             } else {
                 persist()
             }
         }
 
-        restoreRefreshState()
+        restorePersistedTimerState()
     }
 
     deinit {
@@ -74,6 +84,7 @@ final class TimerViewModel {
         selectedDuration = Self.clampedDuration(duration)
         currentDate = clock.now()
         state = .ready
+        isAwaitingRepeatCycleAcknowledgement = false
         persist()
     }
 
@@ -98,6 +109,7 @@ final class TimerViewModel {
         }
 
         state = .paused(remaining: displayDuration)
+        isAwaitingRepeatCycleAcknowledgement = false
         stopRefreshing()
         persist()
     }
@@ -106,19 +118,90 @@ final class TimerViewModel {
         stopRefreshing()
         currentDate = clock.now()
         state = .ready
+        isRepeatEnabled = false
+        isAwaitingRepeatCycleAcknowledgement = false
         persist()
     }
 
     func refresh() {
         currentDate = clock.now()
+        refreshTimer(allowingRepeat: isApplicationActive && isRepeatEnabled)
+    }
 
+    func applicationDidBecomeActive() {
+        currentDate = clock.now()
+        isApplicationActive = true
+        refreshTimer(allowingRepeat: isRepeatEnabled)
+
+        if isRunning {
+            startRefreshing()
+        }
+    }
+
+    func applicationDidBecomeInactive() {
+        isApplicationActive = false
+        stopRefreshing()
+    }
+
+    func toggleRepeat() {
+        isRepeatEnabled.toggle()
+
+        if !isRepeatEnabled {
+            isAwaitingRepeatCycleAcknowledgement = false
+        }
+
+        persist()
+    }
+
+    func toggleRepeatAndStart() {
+        isRepeatEnabled.toggle()
+        currentDate = clock.now()
+        startTimer(with: selectedDuration)
+    }
+
+    func acknowledgeRepeatCycleCompletion() {
+        guard isAwaitingRepeatCycleAcknowledgement else {
+            return
+        }
+
+        currentDate = clock.now()
+        isAwaitingRepeatCycleAcknowledgement = false
+        refreshTimer(allowingRepeat: isApplicationActive && isRepeatEnabled)
+        persist()
+    }
+
+    func saveSelectedDurationAsPreset() {
+        let preset = TimerPreset(duration: selectedDuration)
+
+        guard !presets.contains(preset) else {
+            return
+        }
+
+        presets = Self.normalizedPresets(presets + [preset])
+        persist()
+    }
+
+    func removePreset(_ preset: TimerPreset) {
+        presets.removeAll { $0 == preset }
+        persist()
+    }
+
+    private func refreshTimer(allowingRepeat: Bool) {
         guard case let .running(deadline) = state, deadline <= currentDate else {
             return
         }
 
-        state = .finished
         completionCount += 1
-        stopRefreshing()
+
+        if allowingRepeat {
+            state = .running(deadline: Self.nextDeadline(after: deadline, currentDate: currentDate, duration: selectedDuration))
+            isAwaitingRepeatCycleAcknowledgement = true
+        } else {
+            state = .finished
+            isAwaitingRepeatCycleAcknowledgement = false
+            stopRefreshing()
+        }
+
         persist()
     }
 
@@ -138,22 +221,19 @@ final class TimerViewModel {
     private func startTimer(with duration: Duration) {
         let deadline = currentDate.addingTimeInterval(duration.timerTimeInterval)
         state = .running(deadline: deadline)
+        isAwaitingRepeatCycleAcknowledgement = false
         persist()
         startRefreshing()
     }
 
-    private func restoreRefreshState() {
+    private func restorePersistedTimerState() {
         guard case let .running(deadline) = state else {
             return
         }
 
-        guard deadline > currentDate else {
-            state = .finished
-            persist()
-            return
+        if deadline <= currentDate {
+            refreshTimer(allowingRepeat: isRepeatEnabled)
         }
-
-        startRefreshing()
     }
 
     private func persist() {
@@ -173,12 +253,19 @@ final class TimerViewModel {
         timerStateStore.save(
             PersistedTimerSnapshot(
                 selectedDurationSeconds: selectedDuration.components.seconds,
-                state: persistedState
+                state: persistedState,
+                isRepeatEnabled: isRepeatEnabled,
+                presets: presets,
+                isAwaitingRepeatCycleAcknowledgement: isAwaitingRepeatCycleAcknowledgement
             )
         )
     }
 
     private func startRefreshing() {
+        guard isApplicationActive else {
+            return
+        }
+
         refreshTask?.cancel()
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -215,7 +302,15 @@ final class TimerViewModel {
         return .seconds(seconds)
     }
 
-    private static func restore(from snapshot: PersistedTimerSnapshot) -> (selectedDuration: Duration, state: TimerState)? {
+    private static func restore(
+        from snapshot: PersistedTimerSnapshot
+    ) -> (
+        selectedDuration: Duration,
+        state: TimerState,
+        presets: [TimerPreset],
+        isRepeatEnabled: Bool,
+        isAwaitingRepeatCycleAcknowledgement: Bool
+    )? {
         guard supportedDurationSeconds.contains(snapshot.selectedDurationSeconds) else {
             return nil
         }
@@ -238,7 +333,17 @@ final class TimerViewModel {
             state = .finished
         }
 
-        return (selectedDuration, state)
+        let isAwaitingRepeatCycleAcknowledgement = snapshot.isRepeatEnabled
+            && state.isRunning
+            && snapshot.isAwaitingRepeatCycleAcknowledgement
+
+        return (
+            selectedDuration,
+            state,
+            normalizedPresets(snapshot.presets),
+            snapshot.isRepeatEnabled,
+            isAwaitingRepeatCycleAcknowledgement
+        )
     }
 
     private static var supportedDurationSeconds: ClosedRange<Int64> {
@@ -253,5 +358,27 @@ final class TimerViewModel {
         }
 
         return .seconds(Int64(remainingSeconds.rounded(.up)))
+    }
+
+    private static func normalizedPresets(_ presets: [TimerPreset]) -> [TimerPreset] {
+        var normalizedPresets: [TimerPreset] = []
+
+        for preset in presets.sorted(by: { $0.durationSeconds < $1.durationSeconds }) {
+            guard normalizedPresets.last != preset else {
+                continue
+            }
+
+            normalizedPresets.append(preset)
+        }
+
+        return normalizedPresets
+    }
+
+    private static func nextDeadline(after deadline: Date, currentDate: Date, duration: Duration) -> Date {
+        let durationSeconds = duration.timerTimeInterval
+        let elapsedIntervals = max(0, floor(currentDate.timeIntervalSince(deadline) / durationSeconds))
+        let nextIntervalCount = elapsedIntervals + 1
+
+        return deadline.addingTimeInterval(durationSeconds * nextIntervalCount)
     }
 }

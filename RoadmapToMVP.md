@@ -18,9 +18,9 @@ The starting example is boiling bagels: set 30 seconds, start the timer, flip th
 
 ### Returning to the timer
 
-Time spent outside the app still counts. If a timer has not expired when the user returns, show the correct remaining time. If it has expired, show the finished state and let the user continue from there.
+Time spent outside the app still counts. If a timer has not expired when the user returns, show the correct remaining time. An expired non-repeating timer shows the finished state and lets the user continue from there.
 
-Automatic repeat continues while the app is visible. If a cycle expires while the app is away, it waits at finished until the user deliberately starts it again. Do not calculate unseen repeat cycles.
+Automatic repeat follows its configured schedule while the app is visible and is reconstructed from its recorded deadline when the app returns. If one or more repeat cycles expire while away, show one completion acknowledgement while the current cycle is already running. Do not calculate or display a count of unseen cycles.
 
 MVP does not promise an alert while the app is in the background or the device is locked. It also does not show a countdown outside the main app. Reliable restoration is the requirement, including after a full device restart. Store the timer's timing information and state rather than relying on a countdown process to remain running.
 
@@ -76,13 +76,13 @@ Codex should handle most implementation and focused automated checks, with Xcode
 
 ### Milestone 4 — Repeat and saved presets
 
-- [ ] Add locally saved duration presets with simple selection, saving, and removal.
-- [ ] Add press-and-hold repeat toggling, immediate feedback, a visible repeat indicator, and a brief explanation of the gesture.
-- [ ] Repeat automatically while the app is visible, with a clear way to stop the timer or turn repeat off.
-- [ ] If a cycle expires while away, restore a finished timer and wait for a deliberate restart; do not run missed cycles.
-- [ ] Preserve presets and the repeat setting across launches. Test repeat transitions, recovery, and preset persistence.
-- [ ] **User / hardware:** check the hold gesture while cooking, including whether ordinary taps accidentally toggle repeat and whether repeat status is obvious at a glance.
-- [ ] **Done when:** frequently used durations and repeated cycles are quicker to use without making the main screen feel busy.
+- [x] Add locally saved duration presets with simple selection, saving, and removal.
+- [x] Add press-and-hold repeat toggling, immediate feedback, a visible repeat indicator, and a brief explanation of the gesture.
+- [x] Repeat automatically while the app is visible, with a clear way to stop the timer or turn repeat off.
+- [x] If one or more repeat cycles expire while away, recover the current cycle and require one acknowledgement without interrupting repeat.
+- [x] Preserve presets and the repeat setting across launches. Test repeat transitions, recovery, and preset persistence.
+- [x] **User / hardware:** check the hold gesture while cooking, including whether ordinary taps accidentally toggle repeat and whether repeat status is obvious at a glance.
+- [x] **Done when:** frequently used durations and repeated cycles are quicker to use without making the main screen feel busy.
 
 ### Milestone 5 — Open a configured timer from a link
 
