@@ -86,12 +86,12 @@ Codex should handle most implementation and focused automated checks, with Xcode
 
 ### Milestone 5 — Open a configured timer from a link
 
-- [ ] Define and document a minimal URL format for duration and repeat configuration, including whether opening the link starts the timer.
-- [ ] Route links through the same timer behaviour used by the app's controls.
-- [ ] Handle invalid input clearly and require an explicit choice before replacing an active timer.
-- [ ] Test valid and invalid payloads, opening from a closed app, and opening while a timer is already running.
-- [ ] **User / hardware:** open example links on a device and confirm the expected configuration and timer state appear.
-- [ ] **Done when:** a documented link reliably opens the intended timer without silently disrupting an existing one.
+- [x] Define and document a minimal URL format for duration and repeat configuration, including whether opening the link starts the timer.
+- [x] Route links through the same timer behaviour used by the app's controls.
+- [x] Handle invalid input clearly and require an explicit choice before replacing an active timer.
+- [x] Test valid and invalid payloads, opening from a closed app, and opening while a timer is already running.
+- [x] **User / hardware:** open example links on a device and confirm the expected configuration and timer state appear.
+- [x] **Done when:** a documented link reliably opens the intended timer without silently disrupting an existing one.
 
 ### Milestone 6 — Cook with it and finish MVP
 
