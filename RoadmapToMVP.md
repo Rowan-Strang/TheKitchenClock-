@@ -66,13 +66,13 @@ Codex should handle most implementation and focused automated checks, with Xcode
 
 ### Milestone 3 — Reliable interruption and recovery
 
-- [ ] Save timing information and state whenever meaningful timer actions occur, so recovery does not depend on a clean app shutdown.
-- [ ] Restore the correct remaining time when returning before expiry, and the finished state when returning after expiry.
-- [ ] Preserve the selected duration and recover after app termination or a full device restart.
-- [ ] Keep background alerts outside this milestone.
-- [ ] Test restoration before and after expiry, including stopped timers and missing saved state, using controllable time in unit tests.
-- [ ] **User / hardware:** switch apps and return before and after expiry, then repeat the checks after terminating the app and restarting the device.
-- [ ] **Done when:** returning to the app gives the expected timer state without needing a process to have kept running.
+- [x] Save timing information and state whenever meaningful timer actions occur, so recovery does not depend on a clean app shutdown.
+- [x] Restore the correct remaining time when returning before expiry, and the finished state when returning after expiry.
+- [x] Preserve the selected duration and recover after app termination or a full device restart.
+- [x] Keep background alerts outside this milestone.
+- [x] Test restoration before and after expiry, including stopped timers and missing saved state, using controllable time in unit tests.
+- [x] **User / hardware:** switch apps and return before and after expiry, then repeat the checks after terminating the app and restarting the device.
+- [x] **Done when:** returning to the app gives the expected timer state without needing a process to have kept running.
 
 ### Milestone 4 — Repeat and saved presets
 

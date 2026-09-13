@@ -21,6 +21,11 @@
 		A1000000000000000000000C /* DurationEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* DurationEditor.swift */; };
 		A1000000000000000000000D /* DurationComponentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000026 /* DurationComponentPicker.swift */; };
 		A1000000000000000000000E /* TestTimerClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000027 /* TestTimerClock.swift */; };
+		A1000000000000000000000F /* TimerStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000028 /* TimerStateStore.swift */; };
+		A10000000000000000000010 /* PersistedTimerSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000029 /* PersistedTimerSnapshot.swift */; };
+		A1000000000000000000001A /* PersistedTimerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002A /* PersistedTimerState.swift */; };
+		A1000000000000000000001B /* UserDefaultsTimerStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002B /* UserDefaultsTimerStateStore.swift */; };
+		A1000000000000000000001C /* InMemoryTimerStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002C /* InMemoryTimerStateStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +55,11 @@
 		A10000000000000000000025 /* DurationEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DurationEditor.swift; sourceTree = "<group>"; };
 		A10000000000000000000026 /* DurationComponentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DurationComponentPicker.swift; sourceTree = "<group>"; };
 		A10000000000000000000027 /* TestTimerClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestTimerClock.swift; sourceTree = "<group>"; };
+		A10000000000000000000028 /* TimerStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerStateStore.swift; sourceTree = "<group>"; };
+		A10000000000000000000029 /* PersistedTimerSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistedTimerSnapshot.swift; sourceTree = "<group>"; };
+		A1000000000000000000002A /* PersistedTimerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistedTimerState.swift; sourceTree = "<group>"; };
+		A1000000000000000000002B /* UserDefaultsTimerStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsTimerStateStore.swift; sourceTree = "<group>"; };
+		A1000000000000000000002C /* InMemoryTimerStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InMemoryTimerStateStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,6 +104,7 @@
 			children = (
 				A10000000000000000000017 /* TimerViewModelTests.swift */,
 				A10000000000000000000027 /* TestTimerClock.swift */,
+				A1000000000000000000002C /* InMemoryTimerStateStore.swift */,
 			);
 			path = TheKitchenClockTests;
 			sourceTree = "<group>";
@@ -128,6 +139,10 @@
 				A10000000000000000000024 /* TimerDurationFormatter.swift */,
 				A10000000000000000000025 /* DurationEditor.swift */,
 				A10000000000000000000026 /* DurationComponentPicker.swift */,
+				A10000000000000000000028 /* TimerStateStore.swift */,
+				A10000000000000000000029 /* PersistedTimerSnapshot.swift */,
+				A1000000000000000000002A /* PersistedTimerState.swift */,
+				A1000000000000000000002B /* UserDefaultsTimerStateStore.swift */,
 			);
 			path = Timer;
 			sourceTree = "<group>";
@@ -240,6 +255,10 @@
 				A1000000000000000000000B /* TimerDurationFormatter.swift in Sources */,
 				A1000000000000000000000C /* DurationEditor.swift in Sources */,
 				A1000000000000000000000D /* DurationComponentPicker.swift in Sources */,
+				A1000000000000000000000F /* TimerStateStore.swift in Sources */,
+				A10000000000000000000010 /* PersistedTimerSnapshot.swift in Sources */,
+				A1000000000000000000001A /* PersistedTimerState.swift in Sources */,
+				A1000000000000000000001B /* UserDefaultsTimerStateStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,6 +268,7 @@
 			files = (
 				A10000000000000000000007 /* TimerViewModelTests.swift in Sources */,
 				A1000000000000000000000E /* TestTimerClock.swift in Sources */,
+				A1000000000000000000001C /* InMemoryTimerStateStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

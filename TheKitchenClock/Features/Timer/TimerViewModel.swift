@@ -13,18 +13,32 @@ final class TimerViewModel {
     private(set) var completionCount = 0
 
     @ObservationIgnored private let clock: any TimerClock
+    @ObservationIgnored private let timerStateStore: any TimerStateStore
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     private var currentDate: Date
 
     init(
         selectedDuration: Duration = .seconds(30),
         state: TimerState = .ready,
-        clock: any TimerClock = SystemTimerClock()
+        clock: any TimerClock = SystemTimerClock(),
+        timerStateStore: any TimerStateStore = UserDefaultsTimerStateStore()
     ) {
         self.clock = clock
+        self.timerStateStore = timerStateStore
         self.currentDate = clock.now()
         self.selectedDuration = Self.clampedDuration(selectedDuration)
         self.state = state
+
+        if let snapshot = timerStateStore.load() {
+            if let restoredTimer = Self.restore(from: snapshot) {
+                self.selectedDuration = restoredTimer.selectedDuration
+                self.state = restoredTimer.state
+            } else {
+                persist()
+            }
+        }
+
+        restoreRefreshState()
     }
 
     deinit {
@@ -60,6 +74,7 @@ final class TimerViewModel {
         selectedDuration = Self.clampedDuration(duration)
         currentDate = clock.now()
         state = .ready
+        persist()
     }
 
     func start() {
@@ -84,12 +99,14 @@ final class TimerViewModel {
 
         state = .paused(remaining: displayDuration)
         stopRefreshing()
+        persist()
     }
 
     func reset() {
         stopRefreshing()
         currentDate = clock.now()
         state = .ready
+        persist()
     }
 
     func refresh() {
@@ -102,6 +119,7 @@ final class TimerViewModel {
         state = .finished
         completionCount += 1
         stopRefreshing()
+        persist()
     }
 
     private var displayDuration: Duration {
@@ -120,7 +138,44 @@ final class TimerViewModel {
     private func startTimer(with duration: Duration) {
         let deadline = currentDate.addingTimeInterval(duration.timerTimeInterval)
         state = .running(deadline: deadline)
+        persist()
         startRefreshing()
+    }
+
+    private func restoreRefreshState() {
+        guard case let .running(deadline) = state else {
+            return
+        }
+
+        guard deadline > currentDate else {
+            state = .finished
+            persist()
+            return
+        }
+
+        startRefreshing()
+    }
+
+    private func persist() {
+        let persistedState: PersistedTimerState
+
+        switch state {
+        case .ready:
+            persistedState = .ready
+        case .running(let deadline):
+            persistedState = .running(deadline: deadline)
+        case .paused(let remaining):
+            persistedState = .paused(remainingSeconds: remaining.components.seconds)
+        case .finished:
+            persistedState = .finished
+        }
+
+        timerStateStore.save(
+            PersistedTimerSnapshot(
+                selectedDurationSeconds: selectedDuration.components.seconds,
+                state: persistedState
+            )
+        )
     }
 
     private func startRefreshing() {
@@ -158,6 +213,36 @@ final class TimerViewModel {
         )
 
         return .seconds(seconds)
+    }
+
+    private static func restore(from snapshot: PersistedTimerSnapshot) -> (selectedDuration: Duration, state: TimerState)? {
+        guard supportedDurationSeconds.contains(snapshot.selectedDurationSeconds) else {
+            return nil
+        }
+
+        let selectedDuration = Duration.seconds(snapshot.selectedDurationSeconds)
+        let state: TimerState
+
+        switch snapshot.state {
+        case .ready:
+            state = .ready
+        case .running(let deadline):
+            state = .running(deadline: deadline)
+        case .paused(let remainingSeconds):
+            guard (1...snapshot.selectedDurationSeconds).contains(remainingSeconds) else {
+                return nil
+            }
+
+            state = .paused(remaining: .seconds(remainingSeconds))
+        case .finished:
+            state = .finished
+        }
+
+        return (selectedDuration, state)
+    }
+
+    private static var supportedDurationSeconds: ClosedRange<Int64> {
+        minimumDuration.components.seconds...maximumDuration.components.seconds
     }
 
     private static func remainingDuration(until deadline: Date, from currentDate: Date) -> Duration {
