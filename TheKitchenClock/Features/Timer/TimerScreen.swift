@@ -135,9 +135,6 @@ struct TimerScreen: View {
             updateApplicationActivity()
             updateIdleTimerState()
         }
-        .onChange(of: viewModel.isRunning) { _, _ in
-            updateIdleTimerState()
-        }
     }
 
     private var primaryActionHint: String {
@@ -165,7 +162,7 @@ struct TimerScreen: View {
     }
 
     private func updateIdleTimerState() {
-        UIApplication.shared.isIdleTimerDisabled = viewModel.isRunning && scenePhase == .active
+        UIApplication.shared.isIdleTimerDisabled = scenePhase == .active
     }
 
     private func updateApplicationActivity() {
