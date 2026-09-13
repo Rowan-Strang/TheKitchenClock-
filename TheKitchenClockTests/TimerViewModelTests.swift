@@ -118,6 +118,28 @@ struct TimerViewModelTests {
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
     }
 
+    @Test func cancellingAFinishedSingleTimerMatchesAcknowledgement() {
+        let store = InMemoryTimerStateStore()
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let viewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: store
+        )
+
+        viewModel.start()
+        clock.advance(by: .seconds(30))
+        viewModel.refresh()
+
+        viewModel.cancelAlarm()
+
+        #expect(viewModel.state == .ready)
+        #expect(viewModel.displayText == "00:30")
+        #expect(!viewModel.isRepeatEnabled)
+        #expect(!viewModel.isAwaitingCompletionAcknowledgement)
+        #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
+    }
+
     @Test func missingSavedStateStartsWithTheDefaultTimer() {
         let viewModel = TimerViewModel(timerStateStore: InMemoryTimerStateStore())
 
@@ -306,6 +328,33 @@ struct TimerViewModelTests {
         #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 90)))
         #expect(viewModel.completedCycleDisplayText == nil)
         #expect(store.snapshot?.isAwaitingRepeatCycleAcknowledgement == false)
+    }
+
+    @Test func cancellingARepeatingAlarmStopsTheCurrentAndFutureCycles() {
+        let store = InMemoryTimerStateStore()
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let viewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: store
+        )
+
+        viewModel.applicationDidBecomeActive()
+        viewModel.enableRepeatAndStart()
+        clock.advance(by: .seconds(30))
+        viewModel.refresh()
+
+        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 60)))
+        #expect(viewModel.isAwaitingRepeatCycleAcknowledgement)
+
+        viewModel.cancelAlarm()
+
+        #expect(viewModel.state == .ready)
+        #expect(viewModel.displayText == "00:30")
+        #expect(!viewModel.isRepeatEnabled)
+        #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
+        #expect(!viewModel.isAwaitingCompletionAcknowledgement)
+        #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
     }
 
     @Test func elapsedRepeatTimerContinuesWhenTheAppReturns() {

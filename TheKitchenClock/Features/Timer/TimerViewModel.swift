@@ -174,6 +174,18 @@ final class TimerViewModel {
         setReadyTimer(duration: selectedDuration, isRepeatEnabled: isRepeatEnabled)
     }
 
+    func cancelAlarm() {
+        guard isAwaitingCompletionAcknowledgement else {
+            return
+        }
+
+        if isAwaitingRepeatCycleAcknowledgement {
+            reset()
+        } else {
+            acknowledgeCompletion()
+        }
+    }
+
     func saveSelectedDurationAsPreset() {
         let preset = TimerPreset(duration: selectedDuration)
 

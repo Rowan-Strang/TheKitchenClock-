@@ -15,10 +15,12 @@ struct TimerScreen: View {
             TimerSurfaceButton(
                 isReady: viewModel.state == .ready,
                 isAwaitingCompletionAcknowledgement: viewModel.isAwaitingCompletionAcknowledgement,
+                isAwaitingRepeatCycleAcknowledgement: viewModel.isAwaitingRepeatCycleAcknowledgement,
                 accessibilityValue: viewModel.displayText,
                 onStart: viewModel.start,
                 onEnableRepeatAndStart: viewModel.enableRepeatAndStart,
-                onAcknowledge: viewModel.acknowledgeCompletion
+                onAcknowledge: viewModel.acknowledgeCompletion,
+                onCancelAlarm: viewModel.cancelAlarm
             ) {
                 VStack {
                     Spacer(minLength: 0)
