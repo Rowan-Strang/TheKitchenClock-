@@ -158,10 +158,18 @@ final class TimerViewModel {
         persist()
     }
 
-    func toggleRepeatAndStart() {
-        isRepeatEnabled.toggle()
+    func enableRepeatAndStart() {
+        isRepeatEnabled = true
         currentDate = clock.now()
-        startTimer(with: selectedDuration)
+
+        switch state {
+        case .ready, .finished:
+            startTimer(with: selectedDuration)
+        case .paused(let remaining):
+            startTimer(with: remaining)
+        case .running:
+            persist()
+        }
     }
 
     func acknowledgeRepeatCycleCompletion() {

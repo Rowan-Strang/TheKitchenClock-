@@ -282,7 +282,29 @@ struct TimerViewModelTests {
         #expect(store.snapshot?.isRepeatEnabled == false)
     }
 
-    @Test func togglingRepeatAndStartingRestartsTheConfiguredDuration() {
+    @Test func enablingRepeatAndStartingResumesAPausedTimer() {
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let store = InMemoryTimerStateStore()
+        let viewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: store
+        )
+
+        viewModel.applicationDidBecomeActive()
+        viewModel.start()
+        clock.advance(by: .seconds(12))
+        viewModel.pause()
+        viewModel.enableRepeatAndStart()
+
+        #expect(viewModel.isRepeatEnabled)
+        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
+        #expect(viewModel.displayText == "00:18")
+        #expect(store.snapshot?.isRepeatEnabled == true)
+        #expect(store.snapshot?.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
+    }
+
+    @Test func enablingRepeatAndStartingKeepsRepeatEnabledWhileResumingAPausedTimer() {
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
@@ -291,13 +313,40 @@ struct TimerViewModelTests {
         )
 
         viewModel.applicationDidBecomeActive()
+        viewModel.toggleRepeat()
         viewModel.start()
         clock.advance(by: .seconds(12))
         viewModel.pause()
-        viewModel.toggleRepeatAndStart()
+        viewModel.enableRepeatAndStart()
 
         #expect(viewModel.isRepeatEnabled)
-        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 42)))
+        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
+        #expect(viewModel.displayText == "00:18")
+    }
+
+    @Test func enablingRepeatAndStartingStartsReadyAndFinishedTimersAtTheirConfiguredDuration() {
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let viewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: InMemoryTimerStateStore()
+        )
+
+        viewModel.enableRepeatAndStart()
+
+        #expect(viewModel.isRepeatEnabled)
+        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
+
+        clock.advance(by: .seconds(30))
+        viewModel.toggleRepeat()
+        viewModel.refresh()
+
+        #expect(viewModel.state == .finished)
+
+        viewModel.enableRepeatAndStart()
+
+        #expect(viewModel.isRepeatEnabled)
+        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 60)))
         #expect(viewModel.displayText == "00:30")
     }
 

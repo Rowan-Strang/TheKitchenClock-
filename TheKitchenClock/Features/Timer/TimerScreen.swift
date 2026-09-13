@@ -44,10 +44,10 @@ struct TimerScreen: View {
                             title: viewModel.primaryActionTitle,
                             hint: primaryActionHint,
                             onStart: viewModel.start,
-                            onToggleRepeatAndStart: viewModel.toggleRepeatAndStart
+                            onEnableRepeatAndStart: viewModel.enableRepeatAndStart
                         )
 
-                        Text("Press and hold to toggle repeat and restart.")
+                        Text("Press and hold to turn on repeat and start or resume.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }

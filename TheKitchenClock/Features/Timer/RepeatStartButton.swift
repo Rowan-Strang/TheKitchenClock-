@@ -4,20 +4,20 @@ struct RepeatStartButton: View {
     let title: String
     let hint: String
     let onStart: () -> Void
-    let onToggleRepeatAndStart: () -> Void
+    let onEnableRepeatAndStart: () -> Void
 
     var body: some View {
         Button(title, action: onStart)
             .frame(maxWidth: .infinity, minHeight: 128)
             .buttonStyle(.borderedProminent)
             .accessibilityHint(hint)
-            .accessibilityAction(named: "Toggle repeat and start") {
-                onToggleRepeatAndStart()
+            .accessibilityAction(named: "Turn on repeat and start or resume") {
+                onEnableRepeatAndStart()
             }
             .highPriorityGesture(
                 LongPressGesture(minimumDuration: 0.75)
                     .onEnded { _ in
-                        onToggleRepeatAndStart()
+                        onEnableRepeatAndStart()
                     }
             )
     }
