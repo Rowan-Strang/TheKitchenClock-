@@ -30,6 +30,10 @@
 		A1000000000000000000001E /* PresetsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002E /* PresetsSheet.swift */; };
 		A1000000000000000000001F /* RepeatStartButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002F /* RepeatStartButton.swift */; };
 		A1000000000000000000003A /* RepeatCycleAcknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000030 /* RepeatCycleAcknowledgement.swift */; };
+		A1000000000000000000003B /* TimerLinkRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000003C /* TimerLinkRequest.swift */; };
+		A1000000000000000000003D /* TimerLinkParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000003E /* TimerLinkParser.swift */; };
+		A1000000000000000000003F /* TimerLinkApplicationResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000040 /* TimerLinkApplicationResult.swift */; };
+		A10000000000000000000090 /* TimerLinkParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000091 /* TimerLinkParserTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,6 +72,11 @@
 		A1000000000000000000002E /* PresetsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetsSheet.swift; sourceTree = "<group>"; };
 		A1000000000000000000002F /* RepeatStartButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepeatStartButton.swift; sourceTree = "<group>"; };
 		A10000000000000000000030 /* RepeatCycleAcknowledgement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepeatCycleAcknowledgement.swift; sourceTree = "<group>"; };
+		A1000000000000000000003C /* TimerLinkRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerLinkRequest.swift; sourceTree = "<group>"; };
+		A1000000000000000000003E /* TimerLinkParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerLinkParser.swift; sourceTree = "<group>"; };
+		A10000000000000000000040 /* TimerLinkApplicationResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerLinkApplicationResult.swift; sourceTree = "<group>"; };
+		A10000000000000000000091 /* TimerLinkParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerLinkParserTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000092 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000011 /* TheKitchenClockApp.swift */,
+				A10000000000000000000092 /* Info.plist */,
 				A10000000000000000000065 /* Features */,
 				A10000000000000000000016 /* Assets.xcassets */,
 			);
@@ -113,6 +123,7 @@
 				A10000000000000000000017 /* TimerViewModelTests.swift */,
 				A10000000000000000000027 /* TestTimerClock.swift */,
 				A1000000000000000000002C /* InMemoryTimerStateStore.swift */,
+				A10000000000000000000091 /* TimerLinkParserTests.swift */,
 			);
 			path = TheKitchenClockTests;
 			sourceTree = "<group>";
@@ -155,6 +166,9 @@
 				A1000000000000000000002E /* PresetsSheet.swift */,
 				A1000000000000000000002F /* RepeatStartButton.swift */,
 				A10000000000000000000030 /* RepeatCycleAcknowledgement.swift */,
+				A1000000000000000000003C /* TimerLinkRequest.swift */,
+				A1000000000000000000003E /* TimerLinkParser.swift */,
+				A10000000000000000000040 /* TimerLinkApplicationResult.swift */,
 			);
 			path = Timer;
 			sourceTree = "<group>";
@@ -275,6 +289,9 @@
 				A1000000000000000000001E /* PresetsSheet.swift in Sources */,
 				A1000000000000000000001F /* RepeatStartButton.swift in Sources */,
 				A1000000000000000000003A /* RepeatCycleAcknowledgement.swift in Sources */,
+				A1000000000000000000003B /* TimerLinkRequest.swift in Sources */,
+				A1000000000000000000003D /* TimerLinkParser.swift in Sources */,
+				A1000000000000000000003F /* TimerLinkApplicationResult.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -285,6 +302,7 @@
 				A10000000000000000000007 /* TimerViewModelTests.swift in Sources */,
 				A1000000000000000000000E /* TestTimerClock.swift in Sources */,
 				A1000000000000000000001C /* InMemoryTimerStateStore.swift in Sources */,
+				A10000000000000000000090 /* TimerLinkParserTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -406,13 +424,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "The Kitchen Clock";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TheKitchenClock/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
@@ -436,13 +449,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "The Kitchen Clock";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TheKitchenClock/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;

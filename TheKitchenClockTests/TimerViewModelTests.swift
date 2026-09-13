@@ -427,4 +427,89 @@ struct TimerViewModelTests {
         #expect(viewModel.state == .ready)
         #expect(userDefaults.data(forKey: UserDefaultsTimerStateStore.storageKey) == nil)
     }
+
+    @Test func timerLinkConfiguresAReadyTimerAndDisablesRepeat() throws {
+        let store = InMemoryTimerStateStore()
+        let viewModel = TimerViewModel(timerStateStore: store)
+        let request = try TimerLinkParser.parse(try url("kitchenclock://timer?seconds=75"))
+
+        viewModel.toggleRepeat()
+        let result = viewModel.applyTimerLink(request)
+
+        #expect(result == .configured)
+        #expect(viewModel.selectedDuration == .seconds(75))
+        #expect(viewModel.state == .ready)
+        #expect(!viewModel.isRepeatEnabled)
+        #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
+        #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 75, state: .ready))
+    }
+
+    @Test func timerLinkConfiguresAFinishedTimer() throws {
+        let store = InMemoryTimerStateStore()
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let viewModel = TimerViewModel(clock: clock, timerStateStore: store)
+        let request = try TimerLinkParser.parse(try url("kitchenclock://timer?seconds=75"))
+
+        viewModel.start()
+        clock.advance(by: .seconds(30))
+        viewModel.refresh()
+
+        #expect(viewModel.state == .finished)
+
+        let result = viewModel.applyTimerLink(request)
+
+        #expect(result == .configured)
+        #expect(viewModel.selectedDuration == .seconds(75))
+        #expect(viewModel.state == .ready)
+        #expect(!viewModel.isRepeatEnabled)
+        #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 75, state: .ready))
+    }
+
+    @Test func timerLinkDoesNotReplaceARunningTimer() throws {
+        let store = InMemoryTimerStateStore()
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let viewModel = TimerViewModel(clock: clock, timerStateStore: store)
+        let request = try TimerLinkParser.parse(try url("kitchenclock://timer?seconds=75"))
+
+        viewModel.toggleRepeat()
+        viewModel.start()
+        let originalState = viewModel.state
+        let originalSnapshot = store.snapshot
+
+        let result = viewModel.applyTimerLink(request)
+
+        #expect(result == .rejectedWhileTimerIsActive)
+        #expect(viewModel.selectedDuration == .seconds(30))
+        #expect(viewModel.state == originalState)
+        #expect(viewModel.isRepeatEnabled)
+        #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
+        #expect(store.snapshot == originalSnapshot)
+    }
+
+    @Test func timerLinkDoesNotReplaceAPausedTimer() throws {
+        let store = InMemoryTimerStateStore()
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let viewModel = TimerViewModel(clock: clock, timerStateStore: store)
+        let request = try TimerLinkParser.parse(try url("kitchenclock://timer?seconds=75"))
+
+        viewModel.toggleRepeat()
+        viewModel.start()
+        clock.advance(by: .seconds(12))
+        viewModel.pause()
+        let originalState = viewModel.state
+        let originalSnapshot = store.snapshot
+
+        let result = viewModel.applyTimerLink(request)
+
+        #expect(result == .rejectedWhileTimerIsActive)
+        #expect(viewModel.selectedDuration == .seconds(30))
+        #expect(viewModel.state == originalState)
+        #expect(viewModel.isRepeatEnabled)
+        #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
+        #expect(store.snapshot == originalSnapshot)
+    }
+
+    private func url(_ string: String) throws -> URL {
+        try #require(URL(string: string))
+    }
 }

@@ -7,6 +7,8 @@ struct TimerScreen: View {
     @State private var isPresentingPresets = false
     @State private var isConfirmingPause = false
     @State private var isConfirmingReset = false
+    @State private var isPresentingInvalidTimerLinkAlert = false
+    @State private var isPresentingActiveTimerLinkAlert = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -112,6 +114,15 @@ struct TimerScreen: View {
         } message: {
             Text("The timer will return to its full configured duration.")
         }
+        .alert("Couldn’t Open Timer", isPresented: $isPresentingInvalidTimerLinkAlert) {
+        } message: {
+            Text("Use a link in the format kitchenclock://timer?seconds=30.")
+        }
+        .alert("Timer Already Active", isPresented: $isPresentingActiveTimerLinkAlert) {
+        } message: {
+            Text("Reset the active or paused timer before opening another timer link.")
+        }
+        .onOpenURL(perform: handleIncomingURL)
         .onAppear {
             updateApplicationActivity()
             updateIdleTimerState()
@@ -162,6 +173,21 @@ struct TimerScreen: View {
             viewModel.applicationDidBecomeActive()
         } else {
             viewModel.applicationDidBecomeInactive()
+        }
+    }
+
+    private func handleIncomingURL(_ url: URL) {
+        do {
+            let request = try TimerLinkParser.parse(url)
+
+            switch viewModel.applyTimerLink(request) {
+            case .configured:
+                break
+            case .rejectedWhileTimerIsActive:
+                isPresentingActiveTimerLinkAlert = true
+            }
+        } catch {
+            isPresentingInvalidTimerLinkAlert = true
         }
     }
 }

@@ -81,11 +81,16 @@ final class TimerViewModel {
             return
         }
 
-        selectedDuration = Self.clampedDuration(duration)
-        currentDate = clock.now()
-        state = .ready
-        isAwaitingRepeatCycleAcknowledgement = false
-        persist()
+        setReadyTimer(duration: duration, isRepeatEnabled: isRepeatEnabled)
+    }
+
+    func applyTimerLink(_ request: TimerLinkRequest) -> TimerLinkApplicationResult {
+        guard !state.isActive else {
+            return .rejectedWhileTimerIsActive
+        }
+
+        setReadyTimer(duration: request.duration, isRepeatEnabled: false)
+        return .configured
     }
 
     func start() {
@@ -224,6 +229,15 @@ final class TimerViewModel {
         isAwaitingRepeatCycleAcknowledgement = false
         persist()
         startRefreshing()
+    }
+
+    private func setReadyTimer(duration: Duration, isRepeatEnabled: Bool) {
+        selectedDuration = Self.clampedDuration(duration)
+        currentDate = clock.now()
+        state = .ready
+        self.isRepeatEnabled = isRepeatEnabled
+        isAwaitingRepeatCycleAcknowledgement = false
+        persist()
     }
 
     private func restorePersistedTimerState() {

@@ -8,6 +8,25 @@ The first version will have adjustable durations, saved presets, optional repeat
 
 We're building for iPhone first, in Xcode with native SwiftUI, targeting iOS/iPadOS 26+ and Swift 6.2+. iPad gets the same app with more room. Most of the build will happen with Codex and Xcode; the kitchen is where we'll find out whether it actually feels right.
 
-It's early days. There's no app to run yet, just the [roadmap to MVP](RoadmapToMVP.md) and the [original kitchen brainstorm](kitchen-timer-app-brainstorm-transcript.md).
+## Timer links
+
+The app accepts a custom link that configures a timer without starting it:
+
+```
+kitchenclock://timer?seconds=30
+```
+
+`seconds` must appear exactly once as a whole number from `1` to `359999` (99:59:59). The link accepts no other parameters, including repeat. A successful link loads the duration in the ready state and turns repeat off, so the cook can choose whether to enable it.
+
+Links never interrupt a running or paused timer. Reset the active timer first, then open the link again. Invalid links leave the current timer unchanged and show an explanation in the app.
+
+Examples:
+
+```
+kitchenclock://timer?seconds=30
+kitchenclock://timer?seconds=90
+```
+
+The app is built in small milestones; see the [roadmap to MVP](RoadmapToMVP.md) and the [original kitchen brainstorm](kitchen-timer-app-brainstorm-transcript.md).
 
 There are plenty of places this could go later. For now, I'd like a really good little timer.

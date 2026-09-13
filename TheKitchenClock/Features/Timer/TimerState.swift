@@ -34,4 +34,8 @@ enum TimerState: Equatable {
             false
         }
     }
+
+    var isActive: Bool {
+        isRunning || isPaused
+    }
 }
