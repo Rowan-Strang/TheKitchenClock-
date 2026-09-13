@@ -90,6 +90,8 @@ struct TimerScreen: View {
                 }
             }
         }
+        .modifier(AlarmShakeEffect(isActive: viewModel.isAwaitingCompletionAcknowledgement))
+        .statusBarHidden(viewModel.isAwaitingCompletionAcknowledgement)
         .sheet(isPresented: $isPresentingDurationEditor) {
             DurationEditor(duration: viewModel.selectedDuration, onSave: viewModel.configure)
                 .presentationDetents([.large])
