@@ -40,29 +40,6 @@ struct TimerViewModelTests {
         #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
     }
 
-    @Test func pausePreservesRemainingTimeAndResumeCreatesANewDeadline() {
-        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
-        let viewModel = TimerViewModel(
-            selectedDuration: .seconds(30),
-            clock: clock,
-            timerStateStore: InMemoryTimerStateStore()
-        )
-
-        viewModel.start()
-        clock.advance(by: .seconds(12))
-        viewModel.pause()
-
-        #expect(viewModel.state == .paused(remaining: .seconds(18)))
-        #expect(viewModel.displayText == "00:18")
-
-        clock.advance(by: .seconds(600))
-        viewModel.refresh()
-        viewModel.start()
-
-        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 630)))
-        #expect(viewModel.displayText == "00:18")
-    }
-
     @Test func resetWhileRunningReturnsToSingleTimerModeAtTheConfiguredDuration() {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
@@ -89,29 +66,7 @@ struct TimerViewModelTests {
         #expect(!restoredViewModel.isRepeatEnabled)
     }
 
-    @Test func resetWhilePausedReturnsToSingleTimerModeAtTheConfiguredDuration() {
-        let store = InMemoryTimerStateStore()
-        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
-        let viewModel = TimerViewModel(
-            selectedDuration: .seconds(30),
-            clock: clock,
-            timerStateStore: store
-        )
-
-        viewModel.toggleRepeat()
-        viewModel.start()
-        clock.advance(by: .seconds(12))
-        viewModel.pause()
-        viewModel.reset()
-
-        #expect(viewModel.state == .ready)
-        #expect(viewModel.displayText == "00:30")
-        #expect(!viewModel.isRepeatEnabled)
-        #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
-        #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
-    }
-
-    @Test func expiryTransitionsOnceAndCanStartTheSameDurationAgain() {
+    @Test func expiryTransitionsOnceAndRequiresAcknowledgementBeforeAnotherStart() {
         let store = InMemoryTimerStateStore()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
@@ -129,11 +84,41 @@ struct TimerViewModelTests {
         #expect(viewModel.displayText == "00:00")
         #expect(viewModel.completionCount == 1)
         #expect(store.snapshot?.state == .finished)
+        #expect(viewModel.isAwaitingCompletionAcknowledgement)
+        #expect(!viewModel.shouldShowToolbarControls)
+        #expect(!viewModel.shouldShowStartControl)
 
         viewModel.start()
 
-        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 60)))
+        #expect(viewModel.state == .finished)
+        #expect(viewModel.displayText == "00:00")
+    }
+
+    @Test func acknowledgingAFinishedSingleTimerReturnsItToReadyAtItsConfiguredDuration() {
+        let store = InMemoryTimerStateStore()
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let viewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: store
+        )
+
+        viewModel.start()
+        clock.advance(by: .seconds(30))
+        viewModel.refresh()
+
+        #expect(viewModel.isAwaitingCompletionAcknowledgement)
+
+        viewModel.acknowledgeCompletion()
+
+        #expect(viewModel.state == .ready)
         #expect(viewModel.displayText == "00:30")
+        #expect(!viewModel.isRepeatEnabled)
+        #expect(!viewModel.isAwaitingCompletionAcknowledgement)
+        #expect(viewModel.shouldShowToolbarControls)
+        #expect(viewModel.shouldShowStartControl)
+        #expect(viewModel.primaryActionTitle == "Start")
+        #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
     }
 
     @Test func missingSavedStateStartsWithTheDefaultTimer() {
@@ -191,26 +176,6 @@ struct TimerViewModelTests {
         #expect(restoredViewModel.state == .finished)
         #expect(restoredViewModel.displayText == "00:00")
         #expect(store.snapshot?.state == .finished)
-    }
-
-    @Test func pausedTimerRestoresItsCapturedRemainingTime() {
-        let store = InMemoryTimerStateStore()
-        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
-        let firstViewModel = TimerViewModel(
-            selectedDuration: .seconds(30),
-            clock: clock,
-            timerStateStore: store
-        )
-
-        firstViewModel.start()
-        clock.advance(by: .seconds(12))
-        firstViewModel.pause()
-        clock.advance(by: .seconds(600))
-
-        let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store)
-
-        #expect(restoredViewModel.state == .paused(remaining: .seconds(18)))
-        #expect(restoredViewModel.displayText == "00:18")
     }
 
     @Test func resetAndConfigurationReplaceTheSavedSnapshot() {
@@ -282,48 +247,6 @@ struct TimerViewModelTests {
         #expect(store.snapshot?.isRepeatEnabled == false)
     }
 
-    @Test func enablingRepeatAndStartingResumesAPausedTimer() {
-        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
-        let store = InMemoryTimerStateStore()
-        let viewModel = TimerViewModel(
-            selectedDuration: .seconds(30),
-            clock: clock,
-            timerStateStore: store
-        )
-
-        viewModel.applicationDidBecomeActive()
-        viewModel.start()
-        clock.advance(by: .seconds(12))
-        viewModel.pause()
-        viewModel.enableRepeatAndStart()
-
-        #expect(viewModel.isRepeatEnabled)
-        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
-        #expect(viewModel.displayText == "00:18")
-        #expect(store.snapshot?.isRepeatEnabled == true)
-        #expect(store.snapshot?.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
-    }
-
-    @Test func enablingRepeatAndStartingKeepsRepeatEnabledWhileResumingAPausedTimer() {
-        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
-        let viewModel = TimerViewModel(
-            selectedDuration: .seconds(30),
-            clock: clock,
-            timerStateStore: InMemoryTimerStateStore()
-        )
-
-        viewModel.applicationDidBecomeActive()
-        viewModel.toggleRepeat()
-        viewModel.start()
-        clock.advance(by: .seconds(12))
-        viewModel.pause()
-        viewModel.enableRepeatAndStart()
-
-        #expect(viewModel.isRepeatEnabled)
-        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 30)))
-        #expect(viewModel.displayText == "00:18")
-    }
-
     @Test func enablingRepeatAndStartingStartsReadyAndFinishedTimersAtTheirConfiguredDuration() {
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
@@ -367,7 +290,9 @@ struct TimerViewModelTests {
 
         #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 60)))
         #expect(viewModel.isAwaitingRepeatCycleAcknowledgement)
+        #expect(!viewModel.shouldShowToolbarControls)
         #expect(viewModel.displayText == "00:30")
+        #expect(viewModel.completedCycleDisplayText == "00:00")
         #expect(store.snapshot?.isAwaitingRepeatCycleAcknowledgement == true)
 
         clock.advance(by: .seconds(30))
@@ -377,10 +302,12 @@ struct TimerViewModelTests {
         #expect(viewModel.isAwaitingRepeatCycleAcknowledgement)
         #expect(viewModel.completionCount == 2)
 
-        viewModel.acknowledgeRepeatCycleCompletion()
+        viewModel.acknowledgeCompletion()
 
         #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
+        #expect(viewModel.shouldShowToolbarControls)
         #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 90)))
+        #expect(viewModel.completedCycleDisplayText == nil)
         #expect(store.snapshot?.isAwaitingRepeatCycleAcknowledgement == false)
     }
 
@@ -446,21 +373,6 @@ struct TimerViewModelTests {
         #expect(!snapshot.isAwaitingRepeatCycleAcknowledgement)
     }
 
-    @Test func invalidSavedSnapshotFallsBackToTheDefaultTimer() {
-        let store = InMemoryTimerStateStore(
-            snapshot: PersistedTimerSnapshot(
-                selectedDurationSeconds: 30,
-                state: .paused(remainingSeconds: 0)
-            )
-        )
-
-        let viewModel = TimerViewModel(timerStateStore: store)
-
-        #expect(viewModel.selectedDuration == .seconds(30))
-        #expect(viewModel.state == .ready)
-        #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
-    }
-
     @Test func corruptUserDefaultsDataFallsBackToTheDefaultTimer() throws {
         let suiteName = "TimerViewModelTests.corruptUserDefaultsData"
         let userDefaults = try #require(UserDefaults(suiteName: suiteName))
@@ -522,29 +434,6 @@ struct TimerViewModelTests {
 
         viewModel.toggleRepeat()
         viewModel.start()
-        let originalState = viewModel.state
-        let originalSnapshot = store.snapshot
-
-        let result = viewModel.applyTimerLink(request)
-
-        #expect(result == .rejectedWhileTimerIsActive)
-        #expect(viewModel.selectedDuration == .seconds(30))
-        #expect(viewModel.state == originalState)
-        #expect(viewModel.isRepeatEnabled)
-        #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
-        #expect(store.snapshot == originalSnapshot)
-    }
-
-    @Test func timerLinkDoesNotReplaceAPausedTimer() throws {
-        let store = InMemoryTimerStateStore()
-        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
-        let viewModel = TimerViewModel(clock: clock, timerStateStore: store)
-        let request = try TimerLinkParser.parse(try url("kitchenclock://timer?seconds=75"))
-
-        viewModel.toggleRepeat()
-        viewModel.start()
-        clock.advance(by: .seconds(12))
-        viewModel.pause()
         let originalState = viewModel.state
         let originalSnapshot = store.snapshot
 

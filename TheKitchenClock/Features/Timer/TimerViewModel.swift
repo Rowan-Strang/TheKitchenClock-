@@ -59,21 +59,32 @@ final class TimerViewModel {
         TimerDurationFormatter.string(for: displayDuration)
     }
 
+    var completedCycleDisplayText: String? {
+        guard isAwaitingRepeatCycleAcknowledgement else {
+            return nil
+        }
+
+        return TimerDurationFormatter.string(for: .zero)
+    }
+
     var isRunning: Bool {
         state.isRunning
     }
 
+    var isAwaitingCompletionAcknowledgement: Bool {
+        isAwaitingRepeatCycleAcknowledgement || state == .finished
+    }
+
+    var shouldShowToolbarControls: Bool {
+        !isAwaitingCompletionAcknowledgement
+    }
+
+    var shouldShowStartControl: Bool {
+        state == .ready
+    }
+
     var primaryActionTitle: String {
-        switch state {
-        case .ready:
-            "Start"
-        case .paused:
-            "Resume"
-        case .finished:
-            "Start Again"
-        case .running:
-            ""
-        }
+        "Start"
     }
 
     func configure(duration: Duration) {
@@ -85,7 +96,7 @@ final class TimerViewModel {
     }
 
     func applyTimerLink(_ request: TimerLinkRequest) -> TimerLinkApplicationResult {
-        guard !state.isActive else {
+        guard !isRunning else {
             return .rejectedWhileTimerIsActive
         }
 
@@ -97,26 +108,11 @@ final class TimerViewModel {
         currentDate = clock.now()
 
         switch state {
-        case .ready, .finished:
+        case .ready:
             startTimer(with: selectedDuration)
-        case .paused(let remaining):
-            startTimer(with: remaining)
-        case .running:
+        case .running, .finished:
             break
         }
-    }
-
-    func pause() {
-        refresh()
-
-        guard state.isRunning else {
-            return
-        }
-
-        state = .paused(remaining: displayDuration)
-        isAwaitingRepeatCycleAcknowledgement = false
-        stopRefreshing()
-        persist()
     }
 
     func reset() {
@@ -165,22 +161,25 @@ final class TimerViewModel {
         switch state {
         case .ready, .finished:
             startTimer(with: selectedDuration)
-        case .paused(let remaining):
-            startTimer(with: remaining)
         case .running:
             persist()
         }
     }
 
-    func acknowledgeRepeatCycleCompletion() {
-        guard isAwaitingRepeatCycleAcknowledgement else {
+    func acknowledgeCompletion() {
+        if isAwaitingRepeatCycleAcknowledgement {
+            currentDate = clock.now()
+            isAwaitingRepeatCycleAcknowledgement = false
+            refreshTimer(allowingRepeat: isApplicationActive && isRepeatEnabled)
+            persist()
             return
         }
 
-        currentDate = clock.now()
-        isAwaitingRepeatCycleAcknowledgement = false
-        refreshTimer(allowingRepeat: isApplicationActive && isRepeatEnabled)
-        persist()
+        guard state == .finished else {
+            return
+        }
+
+        setReadyTimer(duration: selectedDuration, isRepeatEnabled: isRepeatEnabled)
     }
 
     func saveSelectedDurationAsPreset() {
@@ -224,8 +223,6 @@ final class TimerViewModel {
             selectedDuration
         case .running(let deadline):
             Self.remainingDuration(until: deadline, from: currentDate)
-        case .paused(let remaining):
-            remaining
         case .finished:
             .zero
         }
@@ -266,8 +263,6 @@ final class TimerViewModel {
             persistedState = .ready
         case .running(let deadline):
             persistedState = .running(deadline: deadline)
-        case .paused(let remaining):
-            persistedState = .paused(remainingSeconds: remaining.components.seconds)
         case .finished:
             persistedState = .finished
         }
@@ -345,12 +340,6 @@ final class TimerViewModel {
             state = .ready
         case .running(let deadline):
             state = .running(deadline: deadline)
-        case .paused(let remainingSeconds):
-            guard (1...snapshot.selectedDurationSeconds).contains(remainingSeconds) else {
-                return nil
-            }
-
-            state = .paused(remaining: .seconds(remainingSeconds))
         case .finished:
             state = .finished
         }

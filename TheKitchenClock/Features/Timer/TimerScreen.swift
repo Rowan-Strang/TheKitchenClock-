@@ -5,7 +5,6 @@ struct TimerScreen: View {
     @State private var viewModel = TimerViewModel()
     @State private var isPresentingDurationEditor = false
     @State private var isPresentingPresets = false
-    @State private var isConfirmingPause = false
     @State private var isConfirmingReset = false
     @State private var isPresentingInvalidTimerLinkAlert = false
     @State private var isPresentingActiveTimerLinkAlert = false
@@ -13,96 +12,87 @@ struct TimerScreen: View {
 
     var body: some View {
         NavigationStack {
-            VStack {
-                Spacer(minLength: 0)
-
+            ZStack {
                 VStack {
-                    if viewModel.isAwaitingRepeatCycleAcknowledgement {
-                        RepeatCycleAcknowledgement(onAcknowledge: viewModel.acknowledgeRepeatCycleCompletion)
-                    } else {
-                        Text(viewModel.state.title)
-                            .font(.headline)
-                            .foregroundStyle(statusColor)
-                            .accessibilityAddTraits(viewModel.isRunning ? .updatesFrequently : [])
+                    Spacer(minLength: 0)
 
-                        if viewModel.isRepeatEnabled {
-                            Label("Repeat On", systemImage: "repeat")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        CountdownDisplay(text: viewModel.displayText)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-
-                Spacer(minLength: 0)
-
-                if !viewModel.isRunning {
                     VStack {
+                        if let completedCycleDisplayText = viewModel.completedCycleDisplayText {
+                            CountdownDisplay(
+                                text: viewModel.displayText,
+                                fontScale: 2,
+                                accessibilityLabel: "\(viewModel.displayText) remaining in the next cycle"
+                            )
+
+                            CountdownDisplay(
+                                text: completedCycleDisplayText,
+                                accessibilityLabel: "Previous cycle complete"
+                            )
+                        } else {
+                            CountdownDisplay(text: viewModel.displayText)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    Spacer(minLength: 0)
+
+                    if viewModel.shouldShowStartControl {
                         RepeatStartButton(
                             title: viewModel.primaryActionTitle,
                             hint: primaryActionHint,
                             onStart: viewModel.start,
                             onEnableRepeatAndStart: viewModel.enableRepeatAndStart
                         )
-
-                        Text("Press and hold to turn on repeat and start or resume.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
                     }
                 }
+                .padding()
+
+                if viewModel.isAwaitingCompletionAcknowledgement {
+                    RepeatCycleAcknowledgement(onAcknowledge: viewModel.acknowledgeCompletion)
+                }
             }
-            .padding()
-            .navigationTitle("Kitchen Clock")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
+                if viewModel.shouldShowToolbarControls {
                     if viewModel.isRunning {
-                        Button("Pause", systemImage: "pause.fill") {
-                            isConfirmingPause = true
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Reset", systemImage: "arrow.counterclockwise") {
+                                isConfirmingReset = true
+                            }
+                            .confirmationDialog("Reset timer?", isPresented: $isConfirmingReset, titleVisibility: .visible) {
+                                Button("Reset Timer", role: .destructive, action: viewModel.reset)
+                            } message: {
+                                Text("The timer will return to its full configured duration.")
+                            }
                         }
-                        .confirmationDialog("Pause timer?", isPresented: $isConfirmingPause, titleVisibility: .visible) {
-                            Button("Pause Timer", action: viewModel.pause)
-                        } message: {
-                            Text("The countdown will stop and can be resumed later.")
-                        }
-                    }
-
-                    if viewModel.isRunning || viewModel.state.isPaused {
-                        Button("Reset", systemImage: "arrow.counterclockwise") {
-                            isConfirmingReset = true
-                        }
-                        .confirmationDialog("Reset timer?", isPresented: $isConfirmingReset, titleVisibility: .visible) {
-                            Button("Reset Timer", role: .destructive, action: viewModel.reset)
-                        } message: {
-                            Text("The timer will return to its full configured duration.")
+                    } else {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Presets", systemImage: "bookmark") {
+                                isPresentingPresets = true
+                            }
                         }
                     }
 
-                    if !viewModel.isRunning && !viewModel.state.isPaused {
-                        Button("Presets", systemImage: "bookmark") {
-                            isPresentingPresets = true
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if !viewModel.isRunning {
+                            Button("Edit Duration", systemImage: "slider.horizontal.3") {
+                                isPresentingDurationEditor = true
+                            }
                         }
 
-                        Button("Edit Duration", systemImage: "slider.horizontal.3") {
-                            isPresentingDurationEditor = true
+                        if viewModel.isRunning || viewModel.isRepeatEnabled {
+                            Button(
+                                viewModel.isRepeatEnabled ? "Turn Repeat Off" : "Turn Repeat On",
+                                systemImage: viewModel.isRepeatEnabled ? "repeat.1" : "repeat",
+                                action: viewModel.toggleRepeat
+                            )
                         }
-                    }
-
-                    if viewModel.isRunning || viewModel.isRepeatEnabled {
-                        Button(
-                            viewModel.isRepeatEnabled ? "Turn Repeat Off" : "Turn Repeat On",
-                            systemImage: "repeat",
-                            action: viewModel.toggleRepeat
-                        )
                     }
                 }
             }
         }
         .sheet(isPresented: $isPresentingDurationEditor) {
             DurationEditor(duration: viewModel.selectedDuration, onSave: viewModel.configure)
-                .presentationDetents([.medium])
+                .presentationDetents([.large])
         }
         .sheet(isPresented: $isPresentingPresets) {
             PresetsSheet(
@@ -112,7 +102,7 @@ struct TimerScreen: View {
                 onSaveSelectedDuration: viewModel.saveSelectedDurationAsPreset,
                 onRemove: viewModel.removePreset
             )
-            .presentationDetents([.medium])
+            .presentationDetents([.large])
         }
         .alert("Couldn’t Open Timer", isPresented: $isPresentingInvalidTimerLinkAlert) {
         } message: {
@@ -120,7 +110,7 @@ struct TimerScreen: View {
         }
         .alert("Timer Already Active", isPresented: $isPresentingActiveTimerLinkAlert) {
         } message: {
-            Text("Reset the active or paused timer before opening another timer link.")
+            Text("Reset the running timer before opening another timer link.")
         }
         .onOpenURL(perform: handleIncomingURL)
         .onAppear {
@@ -141,23 +131,10 @@ struct TimerScreen: View {
         switch viewModel.state {
         case .ready:
             "Starts the configured timer."
-        case .paused:
-            "Continues the paused timer."
         case .finished:
             "Starts the same duration again."
         case .running:
             ""
-        }
-    }
-
-    private var statusColor: Color {
-        switch viewModel.state {
-        case .ready, .paused:
-            .secondary
-        case .running:
-            .green
-        case .finished:
-            .orange
         }
     }
 

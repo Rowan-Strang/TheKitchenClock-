@@ -11,7 +11,7 @@ struct RepeatStartButton: View {
             .frame(maxWidth: .infinity, minHeight: 128)
             .buttonStyle(.borderedProminent)
             .accessibilityHint(hint)
-            .accessibilityAction(named: "Turn on repeat and start or resume") {
+            .accessibilityAction(named: "Turn on repeat and start") {
                 onEnableRepeatAndStart()
             }
             .highPriorityGesture(

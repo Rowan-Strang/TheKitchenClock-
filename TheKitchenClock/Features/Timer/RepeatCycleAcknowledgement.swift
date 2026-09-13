@@ -4,24 +4,18 @@ struct RepeatCycleAcknowledgement: View {
     let onAcknowledge: () -> Void
 
     var body: some View {
-        VStack {
-            Text("Cycle Finished")
-                .font(.title2)
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+
+            Button("Done", action: onAcknowledge)
+                .font(.title)
                 .bold()
-
-            Text("The next cycle is already running.")
-                .foregroundStyle(.secondary)
-
-            Label("Repeat On", systemImage: "repeat")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-
-            Button("Continue", systemImage: "arrow.forward.circle.fill", action: onAcknowledge)
-                .frame(maxWidth: .infinity, minHeight: 128)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .buttonStyle(.borderedProminent)
-                .padding(.top)
+                .containerRelativeFrame(.vertical, count: 2, span: 1, spacing: 0)
         }
         .frame(maxWidth: .infinity)
+        .containerRelativeFrame(.vertical, count: 2, span: 2, spacing: 0)
         .accessibilityElement(children: .contain)
     }
 }
