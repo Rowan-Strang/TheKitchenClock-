@@ -86,7 +86,6 @@ struct TimerViewModelTests {
         #expect(store.snapshot?.state == .finished)
         #expect(viewModel.isAwaitingCompletionAcknowledgement)
         #expect(!viewModel.shouldShowToolbarControls)
-        #expect(!viewModel.shouldShowStartControl)
 
         viewModel.start()
 
@@ -116,8 +115,6 @@ struct TimerViewModelTests {
         #expect(!viewModel.isRepeatEnabled)
         #expect(!viewModel.isAwaitingCompletionAcknowledgement)
         #expect(viewModel.shouldShowToolbarControls)
-        #expect(viewModel.shouldShowStartControl)
-        #expect(viewModel.primaryActionTitle == "Start")
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
     }
 

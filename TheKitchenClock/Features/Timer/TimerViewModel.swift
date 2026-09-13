@@ -79,14 +79,6 @@ final class TimerViewModel {
         !isAwaitingCompletionAcknowledgement
     }
 
-    var shouldShowStartControl: Bool {
-        state == .ready
-    }
-
-    var primaryActionTitle: String {
-        "Start"
-    }
-
     func configure(duration: Duration) {
         guard !isRunning else {
             return

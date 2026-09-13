@@ -12,7 +12,14 @@ struct TimerScreen: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
+            TimerSurfaceButton(
+                isReady: viewModel.state == .ready,
+                isAwaitingCompletionAcknowledgement: viewModel.isAwaitingCompletionAcknowledgement,
+                accessibilityValue: viewModel.displayText,
+                onStart: viewModel.start,
+                onEnableRepeatAndStart: viewModel.enableRepeatAndStart,
+                onAcknowledge: viewModel.acknowledgeCompletion
+            ) {
                 VStack {
                     Spacer(minLength: 0)
 
@@ -35,21 +42,9 @@ struct TimerScreen: View {
                     .frame(maxWidth: .infinity)
 
                     Spacer(minLength: 0)
-
-                    if viewModel.shouldShowStartControl {
-                        RepeatStartButton(
-                            title: viewModel.primaryActionTitle,
-                            hint: primaryActionHint,
-                            onStart: viewModel.start,
-                            onEnableRepeatAndStart: viewModel.enableRepeatAndStart
-                        )
-                    }
                 }
                 .padding()
-
-                if viewModel.isAwaitingCompletionAcknowledgement {
-                    RepeatCycleAcknowledgement(onAcknowledge: viewModel.acknowledgeCompletion)
-                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .toolbar {
                 if viewModel.shouldShowToolbarControls {
@@ -126,17 +121,6 @@ struct TimerScreen: View {
         .onChange(of: scenePhase) { _, _ in
             updateApplicationActivity()
             updateIdleTimerState()
-        }
-    }
-
-    private var primaryActionHint: String {
-        switch viewModel.state {
-        case .ready:
-            "Starts the configured timer."
-        case .finished:
-            "Starts the same duration again."
-        case .running:
-            ""
         }
     }
 
