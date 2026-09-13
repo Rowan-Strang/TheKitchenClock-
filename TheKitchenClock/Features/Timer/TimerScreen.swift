@@ -62,11 +62,21 @@ struct TimerScreen: View {
                         Button("Pause", systemImage: "pause.fill") {
                             isConfirmingPause = true
                         }
+                        .confirmationDialog("Pause timer?", isPresented: $isConfirmingPause, titleVisibility: .visible) {
+                            Button("Pause Timer", action: viewModel.pause)
+                        } message: {
+                            Text("The countdown will stop and can be resumed later.")
+                        }
                     }
 
                     if viewModel.isRunning || viewModel.state.isPaused {
                         Button("Reset", systemImage: "arrow.counterclockwise") {
                             isConfirmingReset = true
+                        }
+                        .confirmationDialog("Reset timer?", isPresented: $isConfirmingReset, titleVisibility: .visible) {
+                            Button("Reset Timer", role: .destructive, action: viewModel.reset)
+                        } message: {
+                            Text("The timer will return to its full configured duration.")
                         }
                     }
 
@@ -103,16 +113,6 @@ struct TimerScreen: View {
                 onRemove: viewModel.removePreset
             )
             .presentationDetents([.medium])
-        }
-        .confirmationDialog("Pause timer?", isPresented: $isConfirmingPause, titleVisibility: .visible) {
-            Button("Pause Timer", action: viewModel.pause)
-        } message: {
-            Text("The countdown will stop and can be resumed later.")
-        }
-        .confirmationDialog("Reset timer?", isPresented: $isConfirmingReset, titleVisibility: .visible) {
-            Button("Reset Timer", role: .destructive, action: viewModel.reset)
-        } message: {
-            Text("The timer will return to its full configured duration.")
         }
         .alert("Couldn’t Open Timer", isPresented: $isPresentingInvalidTimerLinkAlert) {
         } message: {
