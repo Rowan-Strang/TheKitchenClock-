@@ -43,16 +43,19 @@ struct TimerViewModelTests {
 
     @Test func resetWhileRunningReturnsToSingleTimerModeAtTheConfiguredDuration() async {
         let store = InMemoryTimerStateStore()
+        let scheduler = TestTimerAlarmScheduler()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
             timerStateStore: store,
-            alarmScheduler: TestTimerAlarmScheduler(), liveActivityManager: TestTimerLiveActivityManager()
+            alarmScheduler: scheduler,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         await viewModel.toggleRepeat()
         await viewModel.start()
+        let alarmIDs = Set(store.snapshot?.loopAlarmSession?.entries.map(\.id) ?? [])
         clock.advance(by: .seconds(5))
         await viewModel.reset()
 
@@ -61,6 +64,8 @@ struct TimerViewModelTests {
         #expect(!viewModel.isRepeatEnabled)
         #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
+        #expect(scheduler.scheduledAlarms.isEmpty)
+        #expect(scheduler.tornDownAlarmIDs == alarmIDs)
 
         let restoredViewModel = TimerViewModel(clock: clock, timerStateStore: store, alarmScheduler: TestTimerAlarmScheduler(), liveActivityManager: TestTimerLiveActivityManager())
 
@@ -439,18 +444,23 @@ struct TimerViewModelTests {
         #expect(store.snapshot?.isAwaitingRepeatCycleAcknowledgement == false)
     }
 
-    @Test func cancellingARepeatingAlarmStopsTheCurrentAndFutureCycles() async {
+    @Test func cancellingARepeatingAlarmStopsTheCurrentAndFutureCycles() async throws {
         let store = InMemoryTimerStateStore()
+        let scheduler = TestTimerAlarmScheduler()
         let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
         let viewModel = TimerViewModel(
             selectedDuration: .seconds(30),
             clock: clock,
             timerStateStore: store,
-            alarmScheduler: TestTimerAlarmScheduler(), liveActivityManager: TestTimerLiveActivityManager()
+            alarmScheduler: scheduler,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         await viewModel.applicationDidBecomeActive()
         await viewModel.enableRepeatAndStart()
+        let session = try #require(store.snapshot?.loopAlarmSession)
+        let currentAlarmID = try #require(session.entries.first?.id)
+        scheduler.fire(id: currentAlarmID, sendsUpdate: false)
         clock.advance(by: .seconds(30))
         await viewModel.refresh()
 
@@ -465,6 +475,9 @@ struct TimerViewModelTests {
         #expect(!viewModel.isAwaitingRepeatCycleAcknowledgement)
         #expect(!viewModel.isAwaitingCompletionAcknowledgement)
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
+        #expect(scheduler.scheduledAlarms.isEmpty)
+        #expect(scheduler.stoppedAlarmIDs.contains(currentAlarmID))
+        #expect(Set(scheduler.cancelledAlarmIDs).isSuperset(of: Set(session.entries.dropFirst().map(\.id))))
     }
 
     @Test func elapsedRepeatTimerContinuesWhenTheAppReturns() async {

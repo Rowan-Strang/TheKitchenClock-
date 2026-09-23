@@ -16,12 +16,15 @@ final class TestTimerAlarmScheduler: TimerAlarmScheduling {
     var authorization: TimerAlarmAuthorization = .authorized
     var authorizationError: Error?
     var failingScheduleAttempts: Set<Int> = []
+    var suspendedScheduleAttempts: Set<Int> = []
     private(set) var authorizationRequestCount = 0
     private(set) var scheduleAttemptCount = 0
     private(set) var scheduledAlarms: [UUID: ScheduledAlarm] = [:]
     private(set) var cancelledAlarmIDs: [UUID] = []
     private(set) var stoppedAlarmIDs: [UUID] = []
+    private(set) var tornDownAlarmIDs: Set<UUID> = []
     private(set) var alertingAlarmIDs: Set<UUID> = []
+    private var suspendedScheduleContinuations: [Int: CheckedContinuation<Void, Never>] = [:]
     private let updatesStream: AsyncStream<TimerAlarmStatus>
     private let updatesContinuation: AsyncStream<TimerAlarmStatus>.Continuation
 
@@ -41,8 +44,15 @@ final class TestTimerAlarmScheduler: TimerAlarmScheduling {
 
     func schedule(id: UUID, deadline: Date, loopContext: TimerAlarmLoopContext?) async throws {
         scheduleAttemptCount += 1
+        let attempt = scheduleAttemptCount
 
-        if failingScheduleAttempts.contains(scheduleAttemptCount) {
+        if suspendedScheduleAttempts.contains(attempt) {
+            await withCheckedContinuation { continuation in
+                suspendedScheduleContinuations[attempt] = continuation
+            }
+        }
+
+        if failingScheduleAttempts.contains(attempt) {
             throw TestError.failed
         }
 
@@ -61,6 +71,18 @@ final class TestTimerAlarmScheduler: TimerAlarmScheduling {
         alertingAlarmIDs.remove(id)
     }
 
+    func tearDown(ids: Set<UUID>) {
+        tornDownAlarmIDs.formUnion(ids)
+
+        for id in ids {
+            if alertingAlarmIDs.contains(id) {
+                try? stop(id: id)
+            } else {
+                try? cancel(id: id)
+            }
+        }
+    }
+
     func currentAlarmStatus() throws -> TimerAlarmStatus {
         TimerAlarmStatus(activeIDs: Set(scheduledAlarms.keys), alertingIDs: alertingAlarmIDs)
     }
@@ -75,8 +97,21 @@ final class TestTimerAlarmScheduler: TimerAlarmScheduling {
         )
     }
 
-    func fire(id: UUID) {
+    func fire(id: UUID, sendsUpdate: Bool = true) {
         alertingAlarmIDs.insert(id)
-        sendAlarmUpdate()
+
+        if sendsUpdate {
+            sendAlarmUpdate()
+        }
+    }
+
+    func waitUntilScheduleAttemptIsSuspended(_ attempt: Int) async {
+        while suspendedScheduleContinuations[attempt] == nil {
+            await Task.yield()
+        }
+    }
+
+    func resumeScheduleAttempt(_ attempt: Int) {
+        suspendedScheduleContinuations.removeValue(forKey: attempt)?.resume()
     }
 }

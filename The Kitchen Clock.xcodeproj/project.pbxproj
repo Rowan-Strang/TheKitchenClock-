@@ -46,6 +46,7 @@
 		B1000000000000000000000A /* LoopAlarmStopIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001A /* LoopAlarmStopIntent.swift */; };
 		B1000000000000000000000B /* TestTimerAlarmScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001B /* TestTimerAlarmScheduler.swift */; };
 		B1000000000000000000000C /* TimerAlarmIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001C /* TimerAlarmIntegrationTests.swift */; };
+		B1000000000000000000000D /* LoopAlarmQueueReplenishmentResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001F /* LoopAlarmQueueReplenishmentResult.swift */; };
 		C10000000000000000000001 /* TimerLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000011 /* TimerLiveActivityAttributes.swift */; };
 		C10000000000000000000002 /* TimerLiveActivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000012 /* TimerLiveActivityState.swift */; };
 		C10000000000000000000003 /* TimerLiveActivityManaging.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000013 /* TimerLiveActivityManaging.swift */; };
@@ -136,6 +137,7 @@
 		B1000000000000000000001A /* LoopAlarmStopIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopAlarmStopIntent.swift; sourceTree = "<group>"; };
 		B1000000000000000000001B /* TestTimerAlarmScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestTimerAlarmScheduler.swift; sourceTree = "<group>"; };
 		B1000000000000000000001C /* TimerAlarmIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAlarmIntegrationTests.swift; sourceTree = "<group>"; };
+		B1000000000000000000001F /* LoopAlarmQueueReplenishmentResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopAlarmQueueReplenishmentResult.swift; sourceTree = "<group>"; };
 		C10000000000000000000011 /* TimerLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerLiveActivityAttributes.swift; sourceTree = "<group>"; };
 		C10000000000000000000012 /* TimerLiveActivityState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerLiveActivityState.swift; sourceTree = "<group>"; };
 		C10000000000000000000013 /* TimerLiveActivityManaging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerLiveActivityManaging.swift; sourceTree = "<group>"; };
@@ -264,6 +266,7 @@
 				B10000000000000000000017 /* PersistedLoopAlarmSession.swift */,
 				B10000000000000000000018 /* TimerAlarmIssue.swift */,
 				B10000000000000000000019 /* LoopAlarmQueueCoordinator.swift */,
+				B1000000000000000000001F /* LoopAlarmQueueReplenishmentResult.swift */,
 				B1000000000000000000001A /* LoopAlarmStopIntent.swift */,
 				C10000000000000000000011 /* TimerLiveActivityAttributes.swift */,
 				C10000000000000000000012 /* TimerLiveActivityState.swift */,
@@ -446,6 +449,7 @@
 				B10000000000000000000007 /* PersistedLoopAlarmSession.swift in Sources */,
 				B10000000000000000000008 /* TimerAlarmIssue.swift in Sources */,
 				B10000000000000000000009 /* LoopAlarmQueueCoordinator.swift in Sources */,
+				B1000000000000000000000D /* LoopAlarmQueueReplenishmentResult.swift in Sources */,
 				B1000000000000000000000A /* LoopAlarmStopIntent.swift in Sources */,
 				C10000000000000000000001 /* TimerLiveActivityAttributes.swift in Sources */,
 				C10000000000000000000002 /* TimerLiveActivityState.swift in Sources */,

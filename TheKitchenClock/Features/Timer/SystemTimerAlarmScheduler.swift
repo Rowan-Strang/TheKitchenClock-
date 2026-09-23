@@ -67,6 +67,30 @@ final class SystemTimerAlarmScheduler: TimerAlarmScheduling {
         try alarmManager.stop(id: id)
     }
 
+    func tearDown(ids: Set<UUID>) {
+        guard !ids.isEmpty else {
+            return
+        }
+
+        let alertingIDs = (try? currentAlarmStatus().alertingIDs) ?? []
+
+        for id in ids {
+            if alertingIDs.contains(id) {
+                do {
+                    try stop(id: id)
+                } catch {
+                    try? cancel(id: id)
+                }
+            } else {
+                do {
+                    try cancel(id: id)
+                } catch {
+                    try? stop(id: id)
+                }
+            }
+        }
+    }
+
     func currentAlarmStatus() throws -> TimerAlarmStatus {
         Self.status(for: try alarmManager.alarms)
     }

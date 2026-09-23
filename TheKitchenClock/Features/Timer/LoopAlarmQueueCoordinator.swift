@@ -7,11 +7,22 @@ enum LoopAlarmQueueCoordinator {
     static func replenish(
         session: inout PersistedLoopAlarmSession,
         now: Date,
-        scheduler: any TimerAlarmScheduling
-    ) async -> Bool {
+        scheduler: any TimerAlarmScheduling,
+        isSessionValid: () -> Bool = { true }
+    ) async -> LoopAlarmQueueReplenishmentResult {
         var hasFailure = false
+        var createdAlarmIDs: Set<UUID> = []
 
         while session.entries.count < targetAlarmCount {
+            guard isSessionValid() else {
+                invalidate(
+                    session: &session,
+                    createdAlarmIDs: createdAlarmIDs,
+                    scheduler: scheduler
+                )
+                return .invalidated
+            }
+
             var cycleIndex = session.nextCycleIndex
             var fireDate = session.fireDate(for: cycleIndex)
 
@@ -28,18 +39,40 @@ enum LoopAlarmQueueCoordinator {
                     deadline: fireDate,
                     loopContext: TimerAlarmLoopContext(sessionID: session.id, cycleIndex: cycleIndex)
                 )
+
+                guard isSessionValid() else {
+                    createdAlarmIDs.insert(alarmID)
+                    invalidate(
+                        session: &session,
+                        createdAlarmIDs: createdAlarmIDs,
+                        scheduler: scheduler
+                    )
+                    return .invalidated
+                }
+
+                createdAlarmIDs.insert(alarmID)
                 session.entries.append(
                     PersistedLoopAlarmEntry(id: alarmID, cycleIndex: cycleIndex, fireDate: fireDate)
                 )
                 session.entries.sort { $0.cycleIndex < $1.cycleIndex }
                 session.nextCycleIndex = cycleIndex + 1
             } catch {
+                guard isSessionValid() else {
+                    createdAlarmIDs.insert(alarmID)
+                    invalidate(
+                        session: &session,
+                        createdAlarmIDs: createdAlarmIDs,
+                        scheduler: scheduler
+                    )
+                    return .invalidated
+                }
+
                 hasFailure = true
                 break
             }
         }
 
-        return hasFailure
+        return .completed(hasFailure: hasFailure)
     }
 
     static func handleSystemDismissal(
@@ -51,9 +84,10 @@ enum LoopAlarmQueueCoordinator {
         store: any TimerStateStore = UserDefaultsTimerStateStore(),
         liveActivityManager: any TimerLiveActivityManaging = SystemTimerLiveActivityManager()
     ) async {
-        guard let snapshot = store.load(),
-              snapshot.isRepeatEnabled,
-              var session = snapshot.loopAlarmSession,
+        guard let originalSnapshot = store.load(),
+              originalSnapshot.isRepeatEnabled,
+              let originalSession = originalSnapshot.loopAlarmSession,
+              var session = originalSnapshot.loopAlarmSession,
               session.id == sessionID,
               session.entries.contains(where: { $0.id == alarmID && $0.cycleIndex == cycleIndex }) else {
             return
@@ -61,10 +95,29 @@ enum LoopAlarmQueueCoordinator {
 
         session.entries.removeAll { $0.id == alarmID }
         session.lastAcknowledgedCycleIndex = max(session.lastAcknowledgedCycleIndex, cycleIndex)
-        _ = await replenish(session: &session, now: now, scheduler: scheduler)
+        let isSessionValid = {
+            guard let latestSnapshot = store.load() else {
+                return false
+            }
+
+            return latestSnapshot.isRepeatEnabled
+                && latestSnapshot.loopAlarmSession == originalSession
+        }
+        let replenishmentResult = await replenish(
+            session: &session,
+            now: now,
+            scheduler: scheduler,
+            isSessionValid: isSessionValid
+        )
+
+        guard case .completed = replenishmentResult,
+              isSessionValid(),
+              let latestSnapshot = store.load() else {
+            return
+        }
 
         store.save(
-            snapshot.replacingAlarmState(
+            latestSnapshot.replacingAlarmState(
                 oneShotAlarmID: nil,
                 loopAlarmSession: session,
                 isAwaitingRepeatCycleAcknowledgement: false
@@ -84,5 +137,21 @@ enum LoopAlarmQueueCoordinator {
             ),
             allowStart: false
         )
+
+        if let latestSnapshot = store.load(),
+           latestSnapshot.state == .ready,
+           latestSnapshot.oneShotAlarmID == nil,
+           latestSnapshot.loopAlarmSession == nil {
+            await liveActivityManager.synchronize(.inactive, allowStart: false)
+        }
+    }
+
+    private static func invalidate(
+        session: inout PersistedLoopAlarmSession,
+        createdAlarmIDs: Set<UUID>,
+        scheduler: any TimerAlarmScheduling
+    ) {
+        scheduler.tearDown(ids: createdAlarmIDs)
+        session.entries.removeAll { createdAlarmIDs.contains($0.id) }
     }
 }

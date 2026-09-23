@@ -26,6 +26,7 @@ final class TimerViewModel {
     private var currentDate: Date
     private var isApplicationActive = false
     private var isManagingAlarmQueue = false
+    private var alarmLifecycleRevision: UInt = 0
     private var oneShotAlarmID: UUID?
     private var oneShotDeadline: Date?
     private var loopAlarmSession: PersistedLoopAlarmSession?
@@ -231,8 +232,9 @@ final class TimerViewModel {
 
         isStarting = true
         defer { isStarting = false }
+        let lifecycleRevision = beginAlarmLifecycleOperation()
 
-        guard await authorizeAlarms() else {
+        guard await authorizeAlarms(for: lifecycleRevision) else {
             return
         }
 
@@ -250,13 +252,18 @@ final class TimerViewModel {
             lastAcknowledgedCycleIndex: nextCycleIndex - 1,
             entries: []
         )
-        let hasFailure = await LoopAlarmQueueCoordinator.replenish(
+        let replenishmentResult = await LoopAlarmQueueCoordinator.replenish(
             session: &session,
             now: currentDate,
-            scheduler: alarmScheduler
+            scheduler: alarmScheduler,
+            isSessionValid: { self.isAlarmLifecycleCurrent(lifecycleRevision) }
         )
 
-        guard !session.entries.isEmpty else {
+        guard case let .completed(hasFailure) = replenishmentResult else {
+            return
+        }
+
+        guard !session.entries.isEmpty, isAlarmLifecycleCurrent(lifecycleRevision) else {
             alarmIssue = .schedulingFailed
             return
         }
@@ -269,11 +276,15 @@ final class TimerViewModel {
         self.oneShotDeadline = nil
         loopAlarmSession = session
         isRepeatEnabled = true
-        await beginRunning(deadline: session.fireDate(for: nextCycleIndex))
 
         if hasFailure {
             alarmIssue = .limitedRepeatCoverage
         }
+
+        await beginRunning(
+            deadline: session.fireDate(for: nextCycleIndex),
+            lifecycleRevision: lifecycleRevision
+        )
     }
 
     func acknowledgeCompletion() async {
@@ -291,6 +302,7 @@ final class TimerViewModel {
                 persist()
                 return
             }
+            let lifecycleRevision = alarmLifecycleRevision
 
             let dueEntries = session.entries.filter { $0.fireDate <= currentDate }
 
@@ -304,20 +316,28 @@ final class TimerViewModel {
 
             let dueIDs = Set(dueEntries.map(\.id))
             session.entries.removeAll { dueIDs.contains($0.id) }
-            let hasFailure = await LoopAlarmQueueCoordinator.replenish(
+            let replenishmentResult = await LoopAlarmQueueCoordinator.replenish(
                 session: &session,
                 now: currentDate,
-                scheduler: alarmScheduler
+                scheduler: alarmScheduler,
+                isSessionValid: { self.isAlarmLifecycleCurrent(lifecycleRevision) }
             )
+
+            guard case let .completed(hasFailure) = replenishmentResult,
+                  isAlarmLifecycleCurrent(lifecycleRevision) else {
+                return
+            }
+
             loopAlarmSession = session
             isAwaitingRepeatCycleAcknowledgement = false
             refreshTimer(allowingRepeat: isApplicationActive && isRepeatEnabled)
             persist()
-            await synchronizeLiveActivity(allowStart: false)
 
             if hasFailure {
                 alarmIssue = .limitedRepeatCoverage
             }
+
+            await synchronizeLiveActivity(allowStart: false)
             return
         }
 
@@ -325,8 +345,9 @@ final class TimerViewModel {
             return
         }
 
+        invalidateAlarmLifecycle()
         if let oneShotAlarmID {
-            try? alarmScheduler.stop(id: oneShotAlarmID)
+            alarmScheduler.tearDown(ids: [oneShotAlarmID])
         }
         self.oneShotAlarmID = nil
         setReadyTimer(duration: selectedDuration, isRepeatEnabled: isRepeatEnabled)
@@ -368,8 +389,9 @@ final class TimerViewModel {
     private func startOneShotTimer() async {
         isStarting = true
         defer { isStarting = false }
+        let lifecycleRevision = beginAlarmLifecycleOperation()
 
-        guard await authorizeAlarms() else {
+        guard await authorizeAlarms(for: lifecycleRevision) else {
             return
         }
 
@@ -380,21 +402,32 @@ final class TimerViewModel {
         do {
             try await alarmScheduler.schedule(id: alarmID, deadline: deadline, loopContext: nil)
         } catch {
+            guard isAlarmLifecycleCurrent(lifecycleRevision) else {
+                alarmScheduler.tearDown(ids: [alarmID])
+                return
+            }
+
             alarmIssue = .schedulingFailed
+            return
+        }
+
+        guard isAlarmLifecycleCurrent(lifecycleRevision) else {
+            alarmScheduler.tearDown(ids: [alarmID])
             return
         }
 
         oneShotAlarmID = alarmID
         oneShotDeadline = deadline
         loopAlarmSession = nil
-        await beginRunning(deadline: deadline)
+        await beginRunning(deadline: deadline, lifecycleRevision: lifecycleRevision)
     }
 
     private func startRepeatingTimer() async {
         isStarting = true
         defer { isStarting = false }
+        let lifecycleRevision = beginAlarmLifecycleOperation()
 
-        guard await authorizeAlarms() else {
+        guard await authorizeAlarms(for: lifecycleRevision) else {
             return
         }
 
@@ -408,13 +441,18 @@ final class TimerViewModel {
             lastAcknowledgedCycleIndex: 0,
             entries: []
         )
-        let hasFailure = await LoopAlarmQueueCoordinator.replenish(
+        let replenishmentResult = await LoopAlarmQueueCoordinator.replenish(
             session: &session,
             now: currentDate,
-            scheduler: alarmScheduler
+            scheduler: alarmScheduler,
+            isSessionValid: { self.isAlarmLifecycleCurrent(lifecycleRevision) }
         )
 
-        guard !session.entries.isEmpty else {
+        guard case let .completed(hasFailure) = replenishmentResult else {
+            return
+        }
+
+        guard !session.entries.isEmpty, isAlarmLifecycleCurrent(lifecycleRevision) else {
             alarmIssue = .schedulingFailed
             return
         }
@@ -422,11 +460,12 @@ final class TimerViewModel {
         oneShotAlarmID = nil
         oneShotDeadline = nil
         loopAlarmSession = session
-        await beginRunning(deadline: deadline)
 
         if hasFailure {
             alarmIssue = .limitedRepeatCoverage
         }
+
+        await beginRunning(deadline: deadline, lifecycleRevision: lifecycleRevision)
     }
 
     private func convertRunningTimerToRepeat() async {
@@ -436,8 +475,9 @@ final class TimerViewModel {
 
         isStarting = true
         defer { isStarting = false }
+        let lifecycleRevision = beginAlarmLifecycleOperation()
 
-        guard await authorizeAlarms() else {
+        guard await authorizeAlarms(for: lifecycleRevision) else {
             return
         }
 
@@ -455,13 +495,18 @@ final class TimerViewModel {
             lastAcknowledgedCycleIndex: 0,
             entries: []
         )
-        let hasFailure = await LoopAlarmQueueCoordinator.replenish(
+        let replenishmentResult = await LoopAlarmQueueCoordinator.replenish(
             session: &session,
             now: currentDate,
-            scheduler: alarmScheduler
+            scheduler: alarmScheduler,
+            isSessionValid: { self.isAlarmLifecycleCurrent(lifecycleRevision) }
         )
 
-        guard !session.entries.isEmpty else {
+        guard case let .completed(hasFailure) = replenishmentResult else {
+            return
+        }
+
+        guard !session.entries.isEmpty, isAlarmLifecycleCurrent(lifecycleRevision) else {
             alarmIssue = .schedulingFailed
             return
         }
@@ -475,14 +520,17 @@ final class TimerViewModel {
         loopAlarmSession = session
         isRepeatEnabled = true
         persist()
-        await synchronizeLiveActivity(allowStart: true)
 
         if hasFailure {
             alarmIssue = .limitedRepeatCoverage
         }
+
+        await synchronizeLiveActivity(allowStart: true)
     }
 
     private func disableRepeatKeepingCurrentAlarm() async {
+        invalidateAlarmLifecycle()
+
         guard case let .running(deadline) = state, let session = loopAlarmSession else {
             isRepeatEnabled = false
             loopAlarmSession = nil
@@ -495,9 +543,12 @@ final class TimerViewModel {
             .filter { $0.fireDate >= deadline }
             .min { $0.fireDate < $1.fireDate }
 
-        for entry in session.entries where entry.id != keptEntry?.id {
-            try? alarmScheduler.cancel(id: entry.id)
-        }
+        let removedAlarmIDs = Set(
+            session.entries.lazy
+                .filter { $0.id != keptEntry?.id }
+                .map(\.id)
+        )
+        alarmScheduler.tearDown(ids: removedAlarmIDs)
 
         oneShotAlarmID = keptEntry?.id
         oneShotDeadline = keptEntry?.fireDate
@@ -508,21 +559,35 @@ final class TimerViewModel {
         await synchronizeLiveActivity(allowStart: true)
     }
 
-    private func authorizeAlarms() async -> Bool {
+    private func authorizeAlarms(for lifecycleRevision: UInt) async -> Bool {
         do {
-            guard try await alarmScheduler.requestAuthorization() == .authorized else {
+            let authorization = try await alarmScheduler.requestAuthorization()
+
+            guard isAlarmLifecycleCurrent(lifecycleRevision) else {
+                return false
+            }
+
+            guard authorization == .authorized else {
                 alarmIssue = .authorizationDenied
                 return false
             }
             alarmIssue = nil
             return true
         } catch {
+            guard isAlarmLifecycleCurrent(lifecycleRevision) else {
+                return false
+            }
+
             alarmIssue = .schedulingFailed
             return false
         }
     }
 
-    private func beginRunning(deadline: Date) async {
+    private func beginRunning(deadline: Date, lifecycleRevision: UInt) async {
+        guard isAlarmLifecycleCurrent(lifecycleRevision) else {
+            return
+        }
+
         state = .running(deadline: deadline)
         isAwaitingRepeatCycleAcknowledgement = false
         persist()
@@ -597,19 +662,31 @@ final class TimerViewModel {
     }
 
     private func clearTrackedAlarms() {
+        invalidateAlarmLifecycle()
+        var alarmIDs = Set(loopAlarmSession?.entries.map(\.id) ?? [])
+
         if let oneShotAlarmID {
-            try? alarmScheduler.cancel(id: oneShotAlarmID)
+            alarmIDs.insert(oneShotAlarmID)
         }
 
-        if let loopAlarmSession {
-            for entry in loopAlarmSession.entries {
-                try? alarmScheduler.cancel(id: entry.id)
-            }
-        }
+        alarmScheduler.tearDown(ids: alarmIDs)
 
         oneShotAlarmID = nil
         oneShotDeadline = nil
         loopAlarmSession = nil
+    }
+
+    private func beginAlarmLifecycleOperation() -> UInt {
+        invalidateAlarmLifecycle()
+        return alarmLifecycleRevision
+    }
+
+    private func invalidateAlarmLifecycle() {
+        alarmLifecycleRevision &+= 1
+    }
+
+    private func isAlarmLifecycleCurrent(_ revision: UInt) -> Bool {
+        alarmLifecycleRevision == revision
     }
 
     private func persist() {
@@ -724,6 +801,7 @@ final class TimerViewModel {
         }
 
         if var session = loopAlarmSession {
+            let lifecycleRevision = alarmLifecycleRevision
             let removedEntries = session.entries.filter { !alarmStatus.activeIDs.contains($0.id) }
 
             if let latestDismissedCycle = removedEntries
@@ -738,11 +816,18 @@ final class TimerViewModel {
 
             let removedIDs = Set(removedEntries.map(\.id))
             session.entries.removeAll { removedIDs.contains($0.id) }
-            let hasFailure = await LoopAlarmQueueCoordinator.replenish(
+            let replenishmentResult = await LoopAlarmQueueCoordinator.replenish(
                 session: &session,
                 now: currentDate,
-                scheduler: alarmScheduler
+                scheduler: alarmScheduler,
+                isSessionValid: { self.isAlarmLifecycleCurrent(lifecycleRevision) }
             )
+
+            guard case let .completed(hasFailure) = replenishmentResult,
+                  isAlarmLifecycleCurrent(lifecycleRevision) else {
+                return
+            }
+
             loopAlarmSession = session
 
             if hasFailure {
@@ -757,6 +842,7 @@ final class TimerViewModel {
     }
 
     private func synchronizeLiveActivity(allowStart: Bool) async {
+        let lifecycleRevision = alarmLifecycleRevision
         let duration = selectedDuration.timerTimeInterval
         let activityState: TimerLiveActivityState
 
@@ -786,6 +872,12 @@ final class TimerViewModel {
         }
 
         await liveActivityManager.synchronize(activityState, allowStart: allowStart)
+
+        guard !isAlarmLifecycleCurrent(lifecycleRevision) else {
+            return
+        }
+
+        await synchronizeLiveActivity(allowStart: isApplicationActive)
     }
 
     private func synchronizeAlarmStateFromStore() {

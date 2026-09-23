@@ -223,4 +223,82 @@ struct TimerAlarmIntegrationTests {
         #expect(scheduler.scheduledAlarms.isEmpty)
         #expect(store.snapshot?.loopAlarmSession == nil)
     }
+
+    @Test func resetInvalidatesAnInFlightAcknowledgementRefill() async throws {
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let scheduler = TestTimerAlarmScheduler()
+        let store = InMemoryTimerStateStore()
+        let activity = TestTimerLiveActivityManager()
+        let viewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: store,
+            alarmScheduler: scheduler,
+            liveActivityManager: activity
+        )
+
+        await viewModel.applicationDidBecomeActive()
+        await viewModel.enableRepeatAndStart()
+        scheduler.suspendedScheduleAttempts = [5]
+        clock.advance(by: .seconds(30))
+        await viewModel.refresh()
+
+        let acknowledgementTask = Task {
+            await viewModel.acknowledgeCompletion()
+        }
+        await scheduler.waitUntilScheduleAttemptIsSuspended(5)
+
+        await viewModel.cancelAlarm()
+        scheduler.resumeScheduleAttempt(5)
+        await acknowledgementTask.value
+
+        #expect(viewModel.state == .ready)
+        #expect(!viewModel.isRepeatEnabled)
+        #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
+        #expect(scheduler.scheduledAlarms.isEmpty)
+        #expect(activity.currentState == .inactive)
+    }
+
+    @Test func resetInvalidatesAnInFlightSystemDismissalRefill() async throws {
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let scheduler = TestTimerAlarmScheduler()
+        let store = InMemoryTimerStateStore()
+        let activity = TestTimerLiveActivityManager()
+        let viewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: store,
+            alarmScheduler: scheduler,
+            liveActivityManager: activity
+        )
+
+        await viewModel.enableRepeatAndStart()
+        let session = try #require(store.snapshot?.loopAlarmSession)
+        let firstEntry = try #require(session.entries.first)
+        try scheduler.stop(id: firstEntry.id)
+        scheduler.suspendedScheduleAttempts = [5]
+
+        let dismissalTask = Task {
+            await LoopAlarmQueueCoordinator.handleSystemDismissal(
+                alarmID: firstEntry.id,
+                sessionID: session.id,
+                cycleIndex: firstEntry.cycleIndex,
+                now: firstEntry.fireDate,
+                scheduler: scheduler,
+                store: store,
+                liveActivityManager: activity
+            )
+        }
+        await scheduler.waitUntilScheduleAttemptIsSuspended(5)
+
+        await viewModel.reset()
+        scheduler.resumeScheduleAttempt(5)
+        await dismissalTask.value
+
+        #expect(viewModel.state == .ready)
+        #expect(!viewModel.isRepeatEnabled)
+        #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
+        #expect(scheduler.scheduledAlarms.isEmpty)
+        #expect(activity.currentState == .inactive)
+    }
 }
