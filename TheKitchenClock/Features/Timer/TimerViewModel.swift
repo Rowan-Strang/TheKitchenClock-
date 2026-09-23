@@ -26,6 +26,7 @@ final class TimerViewModel {
     private var isApplicationActive = false
     private var isManagingAlarmQueue = false
     private var oneShotAlarmID: UUID?
+    private var oneShotDeadline: Date?
     private var loopAlarmSession: PersistedLoopAlarmSession?
 
     init(
@@ -53,6 +54,7 @@ final class TimerViewModel {
                 self.isRepeatEnabled = restoredTimer.isRepeatEnabled
                 self.isAwaitingRepeatCycleAcknowledgement = restoredTimer.isAwaitingRepeatCycleAcknowledgement
                 self.oneShotAlarmID = restoredTimer.oneShotAlarmID
+                self.oneShotDeadline = restoredTimer.oneShotDeadline
                 self.loopAlarmSession = restoredTimer.loopAlarmSession
             } else {
                 persist()
@@ -192,6 +194,7 @@ final class TimerViewModel {
                 try? alarmScheduler.stop(id: oneShotAlarmID)
             }
             self.oneShotAlarmID = nil
+            self.oneShotDeadline = nil
             state = .ready
         }
 
@@ -202,6 +205,63 @@ final class TimerViewModel {
         isRepeatEnabled = true
         persist()
         await startRepeatingTimer()
+    }
+
+    func enableRepeatFromFinishedOneShot() async {
+        guard state == .finished, !isStarting else {
+            return
+        }
+
+        guard let oneShotDeadline else {
+            await enableRepeatAndStart()
+            return
+        }
+
+        isStarting = true
+        defer { isStarting = false }
+
+        guard await authorizeAlarms() else {
+            return
+        }
+
+        currentDate = clock.now()
+        let nextCycleIndex = Self.firstFutureCycleIndex(
+            after: oneShotDeadline,
+            currentDate: currentDate,
+            duration: selectedDuration
+        )
+        var session = PersistedLoopAlarmSession(
+            id: UUID(),
+            anchorDeadline: oneShotDeadline,
+            durationSeconds: selectedDuration.components.seconds,
+            nextCycleIndex: nextCycleIndex,
+            lastAcknowledgedCycleIndex: nextCycleIndex - 1,
+            entries: []
+        )
+        let hasFailure = await LoopAlarmQueueCoordinator.replenish(
+            session: &session,
+            now: currentDate,
+            scheduler: alarmScheduler
+        )
+
+        guard !session.entries.isEmpty else {
+            alarmIssue = .schedulingFailed
+            return
+        }
+
+        if let oneShotAlarmID {
+            try? alarmScheduler.stop(id: oneShotAlarmID)
+        }
+
+        self.oneShotAlarmID = nil
+        self.oneShotDeadline = nil
+        loopAlarmSession = session
+        isRepeatEnabled = true
+        beginRunning(deadline: session.fireDate(for: nextCycleIndex))
+
+        if hasFailure {
+            alarmIssue = .limitedRepeatCoverage
+        }
     }
 
     func acknowledgeCompletion() async {
@@ -311,6 +371,7 @@ final class TimerViewModel {
         }
 
         oneShotAlarmID = alarmID
+        oneShotDeadline = deadline
         loopAlarmSession = nil
         beginRunning(deadline: deadline)
     }
@@ -345,6 +406,7 @@ final class TimerViewModel {
         }
 
         oneShotAlarmID = nil
+        oneShotDeadline = nil
         loopAlarmSession = session
         beginRunning(deadline: deadline)
 
@@ -395,6 +457,7 @@ final class TimerViewModel {
         }
 
         oneShotAlarmID = nil
+        oneShotDeadline = nil
         loopAlarmSession = session
         isRepeatEnabled = true
         persist()
@@ -421,6 +484,7 @@ final class TimerViewModel {
         }
 
         oneShotAlarmID = keptEntry?.id
+        oneShotDeadline = keptEntry?.fireDate
         loopAlarmSession = nil
         isRepeatEnabled = false
         isAwaitingRepeatCycleAcknowledgement = false
@@ -500,6 +564,7 @@ final class TimerViewModel {
         state = .ready
         self.isRepeatEnabled = isRepeatEnabled
         isAwaitingRepeatCycleAcknowledgement = false
+        oneShotDeadline = nil
         persist()
     }
 
@@ -525,6 +590,7 @@ final class TimerViewModel {
         }
 
         oneShotAlarmID = nil
+        oneShotDeadline = nil
         loopAlarmSession = nil
     }
 
@@ -548,6 +614,7 @@ final class TimerViewModel {
                 presets: presets,
                 isAwaitingRepeatCycleAcknowledgement: isAwaitingRepeatCycleAcknowledgement,
                 oneShotAlarmID: oneShotAlarmID,
+                oneShotDeadline: oneShotDeadline,
                 loopAlarmSession: loopAlarmSession
             )
         )
@@ -616,6 +683,7 @@ final class TimerViewModel {
 
         if let oneShotAlarmID, !activeAlarmIDs.contains(oneShotAlarmID) {
             self.oneShotAlarmID = nil
+            self.oneShotDeadline = nil
 
             if case let .running(deadline) = state, deadline <= currentDate {
                 state = .ready
@@ -665,6 +733,7 @@ final class TimerViewModel {
         }
 
         oneShotAlarmID = snapshot.oneShotAlarmID
+        oneShotDeadline = snapshot.oneShotDeadline
         loopAlarmSession = snapshot.loopAlarmSession
 
         if isRepeatEnabled {
@@ -690,6 +759,7 @@ final class TimerViewModel {
         isRepeatEnabled: Bool,
         isAwaitingRepeatCycleAcknowledgement: Bool,
         oneShotAlarmID: UUID?,
+        oneShotDeadline: Date?,
         loopAlarmSession: PersistedLoopAlarmSession?
     )? {
         guard supportedDurationSeconds.contains(snapshot.selectedDurationSeconds) else {
@@ -719,6 +789,7 @@ final class TimerViewModel {
             snapshot.isRepeatEnabled,
             isAwaitingRepeatCycleAcknowledgement,
             snapshot.isRepeatEnabled ? nil : snapshot.oneShotAlarmID,
+            snapshot.isRepeatEnabled ? nil : snapshot.oneShotDeadline,
             snapshot.isRepeatEnabled ? snapshot.loopAlarmSession : nil
         )
     }
@@ -757,5 +828,16 @@ final class TimerViewModel {
         let nextIntervalCount = elapsedIntervals + 1
 
         return deadline.addingTimeInterval(durationSeconds * nextIntervalCount)
+    }
+
+    private static func firstFutureCycleIndex(
+        after anchorDeadline: Date,
+        currentDate: Date,
+        duration: Duration
+    ) -> Int {
+        let durationSeconds = duration.timerTimeInterval
+        let completedIntervals = max(0, floor(currentDate.timeIntervalSince(anchorDeadline) / durationSeconds))
+
+        return Int(completedIntervals) + 2
     }
 }

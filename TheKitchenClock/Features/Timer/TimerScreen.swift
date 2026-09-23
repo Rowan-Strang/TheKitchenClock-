@@ -8,6 +8,7 @@ struct TimerScreen: View {
     @State private var isConfirmingReset = false
     @State private var isPresentingInvalidTimerLinkAlert = false
     @State private var isPresentingActiveTimerLinkAlert = false
+    @State private var startFeedbackTrigger = 0
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -18,8 +19,9 @@ struct TimerScreen: View {
                 isAwaitingCompletionAcknowledgement: viewModel.isAwaitingCompletionAcknowledgement,
                 isAwaitingRepeatCycleAcknowledgement: viewModel.isAwaitingRepeatCycleAcknowledgement,
                 accessibilityValue: viewModel.displayText,
-                onStart: viewModel.start,
-                onEnableRepeatAndStart: viewModel.enableRepeatAndStart,
+                onStart: startTimer,
+                onEnableRepeatAndStart: startRepeatingTimer,
+                onEnableRepeatFromFinishedOneShot: viewModel.enableRepeatFromFinishedOneShot,
                 onAcknowledge: viewModel.acknowledgeCompletion,
                 onCancelAlarm: viewModel.cancelAlarm
             ) {
@@ -31,7 +33,8 @@ struct TimerScreen: View {
                             CountdownDisplay(
                                 text: viewModel.displayText,
                                 fontScale: 2,
-                                accessibilityLabel: "\(viewModel.displayText) remaining in the next cycle"
+                                accessibilityLabel: "\(viewModel.displayText) remaining in the next cycle",
+                                startFeedbackTrigger: startFeedbackTrigger
                             )
 
                             CountdownDisplay(
@@ -39,7 +42,10 @@ struct TimerScreen: View {
                                 accessibilityLabel: "Previous cycle complete"
                             )
                         } else {
-                            CountdownDisplay(text: viewModel.displayText)
+                            CountdownDisplay(
+                                text: viewModel.displayText,
+                                startFeedbackTrigger: startFeedbackTrigger
+                            )
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -94,6 +100,7 @@ struct TimerScreen: View {
         }
         .modifier(AlarmShakeEffect(isActive: viewModel.isAwaitingCompletionAcknowledgement))
         .statusBarHidden(viewModel.isAwaitingCompletionAcknowledgement)
+        .sensoryFeedback(.impact(weight: .heavy), trigger: startFeedbackTrigger)
         .sheet(isPresented: $isPresentingDurationEditor) {
             DurationEditor(duration: viewModel.selectedDuration, onSave: viewModel.configure)
                 .presentationDetents([.large])
@@ -141,6 +148,11 @@ struct TimerScreen: View {
             }
             updateIdleTimerState()
         }
+        .onChange(of: viewModel.isRunning) { _, isRunning in
+            if isRunning {
+                startFeedbackTrigger += 1
+            }
+        }
     }
 
     private var alarmIssueIsPresented: Binding<Bool> {
@@ -164,6 +176,14 @@ struct TimerScreen: View {
         } else {
             viewModel.applicationDidBecomeInactive()
         }
+    }
+
+    private func startTimer() async {
+        await viewModel.start()
+    }
+
+    private func startRepeatingTimer() async {
+        await viewModel.enableRepeatAndStart()
     }
 
     private func handleIncomingURL(_ url: URL) {

@@ -8,6 +8,7 @@ struct TimerSurfaceButton<Content: View>: View {
     let accessibilityValue: String
     let onStart: () async -> Void
     let onEnableRepeatAndStart: () async -> Void
+    let onEnableRepeatFromFinishedOneShot: () async -> Void
     let onAcknowledge: () async -> Void
     let onCancelAlarm: () async -> Void
     @ViewBuilder let content: () -> Content
@@ -61,18 +62,26 @@ struct TimerSurfaceButton<Content: View>: View {
             .accessibilityHint(
                 isAwaitingRepeatCycleAcknowledgement
                     ? "Double-tap to dismiss the alarm while the next cycle continues. Touch and hold to clear the alarm and stop repeating."
-                    : "Double-tap or touch and hold to dismiss the alarm and return to the configured duration."
+                    : "Double-tap to dismiss the alarm and return to the configured duration. Touch and hold to start repeating from this timer's original finish time."
             )
-            .accessibilityAction(named: isAwaitingRepeatCycleAcknowledgement ? "Stop Repeating Timer" : "Clear Timer Alarm") {
+            .accessibilityAction(named: isAwaitingRepeatCycleAcknowledgement ? "Stop Repeating Timer" : "Start Repeating Timer") {
                 Task {
-                    await onCancelAlarm()
+                    if isAwaitingRepeatCycleAcknowledgement {
+                        await onCancelAlarm()
+                    } else {
+                        await onEnableRepeatFromFinishedOneShot()
+                    }
                 }
             }
             .highPriorityGesture(
                 LongPressGesture(minimumDuration: 0.75)
                     .onEnded { _ in
                         Task {
-                            await onCancelAlarm()
+                            if isAwaitingRepeatCycleAcknowledgement {
+                                await onCancelAlarm()
+                            } else {
+                                await onEnableRepeatFromFinishedOneShot()
+                            }
                         }
                     }
             )

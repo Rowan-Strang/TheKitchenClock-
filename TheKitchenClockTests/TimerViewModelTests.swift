@@ -145,6 +145,102 @@ struct TimerViewModelTests {
         #expect(store.snapshot == PersistedTimerSnapshot(selectedDurationSeconds: 30, state: .ready))
     }
 
+    @Test func holdingAFinishedSingleTimerStartsAnAnchoredRepeatCycle() async throws {
+        let store = InMemoryTimerStateStore()
+        let scheduler = TestTimerAlarmScheduler()
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let viewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: store,
+            alarmScheduler: scheduler
+        )
+
+        await viewModel.start()
+        let oneShotAlarmID = try #require(store.snapshot?.oneShotAlarmID)
+        clock.advance(by: .seconds(30))
+        viewModel.refresh()
+        clock.advance(by: .seconds(10))
+
+        #expect(store.snapshot?.oneShotDeadline == Date(timeIntervalSinceReferenceDate: 30))
+
+        await viewModel.enableRepeatFromFinishedOneShot()
+
+        let session = try #require(store.snapshot?.loopAlarmSession)
+        #expect(viewModel.isRepeatEnabled)
+        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 60)))
+        #expect(viewModel.displayText == "00:20")
+        #expect(!viewModel.isAwaitingCompletionAcknowledgement)
+        #expect(scheduler.stoppedAlarmIDs == [oneShotAlarmID])
+        #expect(session.anchorDeadline == Date(timeIntervalSinceReferenceDate: 30))
+        #expect(session.lastAcknowledgedCycleIndex == 1)
+        #expect(session.entries.map(\.cycleIndex) == [2, 3, 4, 5])
+        #expect(session.entries.map(\.fireDate) == [
+            Date(timeIntervalSinceReferenceDate: 60),
+            Date(timeIntervalSinceReferenceDate: 90),
+            Date(timeIntervalSinceReferenceDate: 120),
+            Date(timeIntervalSinceReferenceDate: 150)
+        ])
+        #expect(store.snapshot?.oneShotAlarmID == nil)
+        #expect(store.snapshot?.oneShotDeadline == nil)
+    }
+
+    @Test func holdingAFinishedSingleTimerLateSkipsMissedCyclesAndKeepsTheOriginalCadence() async throws {
+        let store = InMemoryTimerStateStore()
+        let scheduler = TestTimerAlarmScheduler()
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let viewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: store,
+            alarmScheduler: scheduler
+        )
+
+        await viewModel.start()
+        clock.advance(by: .seconds(30))
+        viewModel.refresh()
+        clock.advance(by: .seconds(70))
+
+        await viewModel.enableRepeatFromFinishedOneShot()
+
+        let session = try #require(store.snapshot?.loopAlarmSession)
+        #expect(viewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 120)))
+        #expect(viewModel.displayText == "00:20")
+        #expect(session.anchorDeadline == Date(timeIntervalSinceReferenceDate: 30))
+        #expect(session.lastAcknowledgedCycleIndex == 3)
+        #expect(session.entries.map(\.cycleIndex) == [4, 5, 6, 7])
+    }
+
+    @Test func aRestoredFinishedSingleTimerRetainsItsDeadlineForAnAnchoredRepeat() async throws {
+        let store = InMemoryTimerStateStore()
+        let scheduler = TestTimerAlarmScheduler()
+        let clock = TestTimerClock(Date(timeIntervalSinceReferenceDate: 0))
+        let firstViewModel = TimerViewModel(
+            selectedDuration: .seconds(30),
+            clock: clock,
+            timerStateStore: store,
+            alarmScheduler: scheduler
+        )
+
+        await firstViewModel.start()
+        clock.advance(by: .seconds(30))
+        firstViewModel.refresh()
+        clock.advance(by: .seconds(10))
+
+        let restoredViewModel = TimerViewModel(
+            clock: clock,
+            timerStateStore: store,
+            alarmScheduler: scheduler
+        )
+
+        await restoredViewModel.enableRepeatFromFinishedOneShot()
+
+        let session = try #require(store.snapshot?.loopAlarmSession)
+        #expect(restoredViewModel.state == .running(deadline: Date(timeIntervalSinceReferenceDate: 60)))
+        #expect(restoredViewModel.displayText == "00:20")
+        #expect(session.anchorDeadline == Date(timeIntervalSinceReferenceDate: 30))
+    }
+
     @Test func missingSavedStateStartsWithTheDefaultTimer() async {
         let viewModel = TimerViewModel(timerStateStore: InMemoryTimerStateStore(), alarmScheduler: TestTimerAlarmScheduler())
 

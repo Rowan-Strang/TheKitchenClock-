@@ -7,6 +7,7 @@ struct PersistedTimerSnapshot: Codable, Equatable {
     let presets: [TimerPreset]
     let isAwaitingRepeatCycleAcknowledgement: Bool
     let oneShotAlarmID: UUID?
+    let oneShotDeadline: Date?
     let loopAlarmSession: PersistedLoopAlarmSession?
 
     init(
@@ -16,6 +17,7 @@ struct PersistedTimerSnapshot: Codable, Equatable {
         presets: [TimerPreset] = [.defaultPreset],
         isAwaitingRepeatCycleAcknowledgement: Bool = false,
         oneShotAlarmID: UUID? = nil,
+        oneShotDeadline: Date? = nil,
         loopAlarmSession: PersistedLoopAlarmSession? = nil
     ) {
         self.selectedDurationSeconds = selectedDurationSeconds
@@ -24,6 +26,7 @@ struct PersistedTimerSnapshot: Codable, Equatable {
         self.presets = presets
         self.isAwaitingRepeatCycleAcknowledgement = isAwaitingRepeatCycleAcknowledgement
         self.oneShotAlarmID = oneShotAlarmID
+        self.oneShotDeadline = oneShotDeadline
         self.loopAlarmSession = loopAlarmSession
     }
 
@@ -34,6 +37,7 @@ struct PersistedTimerSnapshot: Codable, Equatable {
         case presets
         case isAwaitingRepeatCycleAcknowledgement
         case oneShotAlarmID
+        case oneShotDeadline
         case loopAlarmSession
     }
 
@@ -49,6 +53,7 @@ struct PersistedTimerSnapshot: Codable, Equatable {
             forKey: .isAwaitingRepeatCycleAcknowledgement
         ) ?? false
         oneShotAlarmID = try container.decodeIfPresent(UUID.self, forKey: .oneShotAlarmID)
+        oneShotDeadline = try container.decodeIfPresent(Date.self, forKey: .oneShotDeadline)
         loopAlarmSession = try container.decodeIfPresent(PersistedLoopAlarmSession.self, forKey: .loopAlarmSession)
     }
 
@@ -61,6 +66,7 @@ struct PersistedTimerSnapshot: Codable, Equatable {
         try container.encode(presets, forKey: .presets)
         try container.encode(isAwaitingRepeatCycleAcknowledgement, forKey: .isAwaitingRepeatCycleAcknowledgement)
         try container.encodeIfPresent(oneShotAlarmID, forKey: .oneShotAlarmID)
+        try container.encodeIfPresent(oneShotDeadline, forKey: .oneShotDeadline)
         try container.encodeIfPresent(loopAlarmSession, forKey: .loopAlarmSession)
     }
 
@@ -77,6 +83,7 @@ struct PersistedTimerSnapshot: Codable, Equatable {
             isAwaitingRepeatCycleAcknowledgement: isAwaitingRepeatCycleAcknowledgement
                 ?? self.isAwaitingRepeatCycleAcknowledgement,
             oneShotAlarmID: oneShotAlarmID,
+            oneShotDeadline: oneShotDeadline,
             loopAlarmSession: loopAlarmSession
         )
     }
