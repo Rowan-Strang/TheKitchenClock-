@@ -21,8 +21,9 @@ final class TestTimerAlarmScheduler: TimerAlarmScheduling {
     private(set) var scheduledAlarms: [UUID: ScheduledAlarm] = [:]
     private(set) var cancelledAlarmIDs: [UUID] = []
     private(set) var stoppedAlarmIDs: [UUID] = []
-    private let updatesStream: AsyncStream<Set<UUID>>
-    private let updatesContinuation: AsyncStream<Set<UUID>>.Continuation
+    private(set) var alertingAlarmIDs: Set<UUID> = []
+    private let updatesStream: AsyncStream<TimerAlarmStatus>
+    private let updatesContinuation: AsyncStream<TimerAlarmStatus>.Continuation
 
     init() {
         (updatesStream, updatesContinuation) = AsyncStream.makeStream()
@@ -51,22 +52,31 @@ final class TestTimerAlarmScheduler: TimerAlarmScheduling {
     func cancel(id: UUID) throws {
         cancelledAlarmIDs.append(id)
         scheduledAlarms[id] = nil
+        alertingAlarmIDs.remove(id)
     }
 
     func stop(id: UUID) throws {
         stoppedAlarmIDs.append(id)
         scheduledAlarms[id] = nil
+        alertingAlarmIDs.remove(id)
     }
 
-    func scheduledAlarmIDs() throws -> Set<UUID> {
-        Set(scheduledAlarms.keys)
+    func currentAlarmStatus() throws -> TimerAlarmStatus {
+        TimerAlarmStatus(activeIDs: Set(scheduledAlarms.keys), alertingIDs: alertingAlarmIDs)
     }
 
-    func alarmUpdates() -> AsyncStream<Set<UUID>> {
+    func alarmUpdates() -> AsyncStream<TimerAlarmStatus> {
         updatesStream
     }
 
     func sendAlarmUpdate() {
-        updatesContinuation.yield(Set(scheduledAlarms.keys))
+        updatesContinuation.yield(
+            TimerAlarmStatus(activeIDs: Set(scheduledAlarms.keys), alertingIDs: alertingAlarmIDs)
+        )
+    }
+
+    func fire(id: UUID) {
+        alertingAlarmIDs.insert(id)
+        sendAlarmUpdate()
     }
 }

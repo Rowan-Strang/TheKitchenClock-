@@ -63,7 +63,11 @@ struct TimerScreen: View {
                                 isConfirmingReset = true
                             }
                             .confirmationDialog("Reset timer?", isPresented: $isConfirmingReset, titleVisibility: .visible) {
-                                Button("Reset Timer", role: .destructive, action: viewModel.reset)
+                                Button("Reset Timer", role: .destructive) {
+                                    Task {
+                                        await viewModel.reset()
+                                    }
+                                }
                             } message: {
                                 Text("The timer will return to its full configured duration.")
                             }
@@ -102,14 +106,22 @@ struct TimerScreen: View {
         .statusBarHidden(viewModel.isAwaitingCompletionAcknowledgement)
         .sensoryFeedback(.impact(weight: .heavy), trigger: startFeedbackTrigger)
         .sheet(isPresented: $isPresentingDurationEditor) {
-            DurationEditor(duration: viewModel.selectedDuration, onSave: viewModel.configure)
+            DurationEditor(duration: viewModel.selectedDuration) { duration in
+                Task {
+                    await viewModel.configure(duration: duration)
+                }
+            }
                 .presentationDetents([.large])
         }
         .sheet(isPresented: $isPresentingPresets) {
             PresetsSheet(
                 presets: viewModel.presets,
                 selectedDuration: viewModel.selectedDuration,
-                onSelect: viewModel.configure,
+                onSelect: { duration in
+                    Task {
+                        await viewModel.configure(duration: duration)
+                    }
+                },
                 onSaveSelectedDuration: viewModel.saveSelectedDurationAsPreset,
                 onRemove: viewModel.removePreset
             )
@@ -187,10 +199,16 @@ struct TimerScreen: View {
     }
 
     private func handleIncomingURL(_ url: URL) {
+        Task {
+            await applyIncomingURL(url)
+        }
+    }
+
+    private func applyIncomingURL(_ url: URL) async {
         do {
             let request = try TimerLinkParser.parse(url)
 
-            switch viewModel.applyTimerLink(request) {
+            switch await viewModel.applyTimerLink(request) {
             case .configured:
                 break
             case .rejectedWhileTimerIsActive:

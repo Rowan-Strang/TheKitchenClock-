@@ -12,7 +12,8 @@ struct TimerAlarmIntegrationTests {
             selectedDuration: .seconds(30),
             clock: clock,
             timerStateStore: store,
-            alarmScheduler: scheduler
+            alarmScheduler: scheduler,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         await viewModel.start()
@@ -29,7 +30,8 @@ struct TimerAlarmIntegrationTests {
         scheduler.authorization = .denied
         let viewModel = TimerViewModel(
             timerStateStore: InMemoryTimerStateStore(),
-            alarmScheduler: scheduler
+            alarmScheduler: scheduler,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         await viewModel.start()
@@ -44,7 +46,8 @@ struct TimerAlarmIntegrationTests {
         scheduler.failingScheduleAttempts = [1]
         let viewModel = TimerViewModel(
             timerStateStore: InMemoryTimerStateStore(),
-            alarmScheduler: scheduler
+            alarmScheduler: scheduler,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         await viewModel.start()
@@ -61,7 +64,8 @@ struct TimerAlarmIntegrationTests {
             selectedDuration: .seconds(30),
             clock: clock,
             timerStateStore: store,
-            alarmScheduler: scheduler
+            alarmScheduler: scheduler,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         await viewModel.toggleRepeat()
@@ -85,7 +89,8 @@ struct TimerAlarmIntegrationTests {
         let store = InMemoryTimerStateStore()
         let viewModel = TimerViewModel(
             timerStateStore: store,
-            alarmScheduler: scheduler
+            alarmScheduler: scheduler,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         await viewModel.toggleRepeat()
@@ -104,7 +109,8 @@ struct TimerAlarmIntegrationTests {
             selectedDuration: .seconds(30),
             clock: clock,
             timerStateStore: store,
-            alarmScheduler: scheduler
+            alarmScheduler: scheduler,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         await viewModel.applicationDidBecomeActive()
@@ -112,7 +118,7 @@ struct TimerAlarmIntegrationTests {
         await viewModel.start()
         let originalSession = try #require(store.snapshot?.loopAlarmSession)
         clock.advance(by: .seconds(65))
-        viewModel.refresh()
+        await viewModel.refresh()
 
         await viewModel.acknowledgeCompletion()
 
@@ -129,7 +135,8 @@ struct TimerAlarmIntegrationTests {
         let store = InMemoryTimerStateStore()
         let viewModel = TimerViewModel(
             timerStateStore: store,
-            alarmScheduler: scheduler
+            alarmScheduler: scheduler,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         await viewModel.toggleRepeat()
@@ -182,7 +189,8 @@ struct TimerAlarmIntegrationTests {
             cycleIndex: 1,
             now: Date(timeIntervalSinceReferenceDate: 31),
             scheduler: scheduler,
-            store: store
+            store: store,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         let updatedSession = try #require(store.snapshot?.loopAlarmSession)
@@ -208,7 +216,8 @@ struct TimerAlarmIntegrationTests {
             cycleIndex: 1,
             now: Date(timeIntervalSinceReferenceDate: 31),
             scheduler: scheduler,
-            store: store
+            store: store,
+            liveActivityManager: TestTimerLiveActivityManager()
         )
 
         #expect(scheduler.scheduledAlarms.isEmpty)

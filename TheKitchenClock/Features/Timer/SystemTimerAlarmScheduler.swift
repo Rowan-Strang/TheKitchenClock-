@@ -1,4 +1,5 @@
 @preconcurrency import AlarmKit
+import AppIntents
 import Foundation
 import SwiftUI
 
@@ -38,12 +39,16 @@ final class SystemTimerAlarmScheduler: TimerAlarmScheduling {
             presentation: AlarmPresentation(alert: alert),
             tintColor: .accentColor
         )
-        let stopIntent = loopContext.map {
-            LoopAlarmStopIntent(
+        let stopIntent: any LiveActivityIntent
+
+        if let loopContext {
+            stopIntent = LoopAlarmStopIntent(
                 alarmID: id.uuidString,
-                sessionID: $0.sessionID.uuidString,
-                cycleIndex: $0.cycleIndex
+                sessionID: loopContext.sessionID.uuidString,
+                cycleIndex: loopContext.cycleIndex
             )
+        } else {
+            stopIntent = OneShotAlarmStopIntent(alarmID: id.uuidString)
         }
         let configuration = AlarmManager.AlarmConfiguration<TimerAlarmMetadata>.alarm(
             schedule: .fixed(deadline),
@@ -62,17 +67,17 @@ final class SystemTimerAlarmScheduler: TimerAlarmScheduling {
         try alarmManager.stop(id: id)
     }
 
-    func scheduledAlarmIDs() throws -> Set<UUID> {
-        Set(try alarmManager.alarms.map(\.id))
+    func currentAlarmStatus() throws -> TimerAlarmStatus {
+        Self.status(for: try alarmManager.alarms)
     }
 
-    func alarmUpdates() -> AsyncStream<Set<UUID>> {
+    func alarmUpdates() -> AsyncStream<TimerAlarmStatus> {
         let updates = alarmManager.alarmUpdates
 
         return AsyncStream { continuation in
             let task = Task {
                 for await alarms in updates {
-                    continuation.yield(Set(alarms.map(\.id)))
+                    continuation.yield(Self.status(for: alarms))
                 }
 
                 continuation.finish()
@@ -82,5 +87,12 @@ final class SystemTimerAlarmScheduler: TimerAlarmScheduling {
                 task.cancel()
             }
         }
+    }
+
+    private static func status(for alarms: [Alarm]) -> TimerAlarmStatus {
+        TimerAlarmStatus(
+            activeIDs: Set(alarms.map(\.id)),
+            alertingIDs: Set(alarms.filter { $0.state == .alerting }.map(\.id))
+        )
     }
 }

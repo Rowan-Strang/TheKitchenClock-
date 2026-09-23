@@ -48,7 +48,8 @@ enum LoopAlarmQueueCoordinator {
         cycleIndex: Int,
         now: Date = .now,
         scheduler: any TimerAlarmScheduling = SystemTimerAlarmScheduler(),
-        store: any TimerStateStore = UserDefaultsTimerStateStore()
+        store: any TimerStateStore = UserDefaultsTimerStateStore(),
+        liveActivityManager: any TimerLiveActivityManaging = SystemTimerLiveActivityManager()
     ) async {
         guard let snapshot = store.load(),
               snapshot.isRepeatEnabled,
@@ -68,6 +69,20 @@ enum LoopAlarmQueueCoordinator {
                 loopAlarmSession: session,
                 isAwaitingRepeatCycleAcknowledgement: false
             )
+        )
+
+        let nextCycleIndex = max(
+            cycleIndex + 1,
+            Int(floor(now.timeIntervalSince(session.anchorDeadline) / Double(session.durationSeconds))) + 2
+        )
+        let deadline = session.fireDate(for: nextCycleIndex)
+        await liveActivityManager.synchronize(
+            .countdown(
+                sessionID: session.id,
+                startDate: deadline.addingTimeInterval(-Double(session.durationSeconds)),
+                deadline: deadline
+            ),
+            allowStart: false
         )
     }
 }

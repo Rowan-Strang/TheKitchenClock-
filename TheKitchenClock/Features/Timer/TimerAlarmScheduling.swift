@@ -6,6 +6,6 @@ protocol TimerAlarmScheduling {
     func schedule(id: UUID, deadline: Date, loopContext: TimerAlarmLoopContext?) async throws
     func cancel(id: UUID) throws
     func stop(id: UUID) throws
-    func scheduledAlarmIDs() throws -> Set<UUID>
-    func alarmUpdates() -> AsyncStream<Set<UUID>>
+    func currentAlarmStatus() throws -> TimerAlarmStatus
+    func alarmUpdates() -> AsyncStream<TimerAlarmStatus>
 }

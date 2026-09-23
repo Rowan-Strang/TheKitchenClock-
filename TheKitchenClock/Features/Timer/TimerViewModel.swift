@@ -20,6 +20,7 @@ final class TimerViewModel {
     @ObservationIgnored private let clock: any TimerClock
     @ObservationIgnored private let timerStateStore: any TimerStateStore
     @ObservationIgnored private let alarmScheduler: any TimerAlarmScheduling
+    @ObservationIgnored private let liveActivityManager: any TimerLiveActivityManaging
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var alarmUpdatesTask: Task<Void, Never>?
     private var currentDate: Date
@@ -34,11 +35,13 @@ final class TimerViewModel {
         state: TimerState = .ready,
         clock: any TimerClock = SystemTimerClock(),
         timerStateStore: any TimerStateStore = UserDefaultsTimerStateStore(),
-        alarmScheduler: any TimerAlarmScheduling = SystemTimerAlarmScheduler()
+        alarmScheduler: any TimerAlarmScheduling = SystemTimerAlarmScheduler(),
+        liveActivityManager: any TimerLiveActivityManaging = SystemTimerLiveActivityManager()
     ) {
         self.clock = clock
         self.timerStateStore = timerStateStore
         self.alarmScheduler = alarmScheduler
+        self.liveActivityManager = liveActivityManager
         self.currentDate = clock.now()
         self.selectedDuration = Self.clampedDuration(selectedDuration)
         self.state = state
@@ -94,22 +97,24 @@ final class TimerViewModel {
         !isAwaitingCompletionAcknowledgement
     }
 
-    func configure(duration: Duration) {
+    func configure(duration: Duration) async {
         guard !isRunning else {
             return
         }
 
         clearTrackedAlarms()
         setReadyTimer(duration: duration, isRepeatEnabled: isRepeatEnabled)
+        await synchronizeLiveActivity(allowStart: false)
     }
 
-    func applyTimerLink(_ request: TimerLinkRequest) -> TimerLinkApplicationResult {
+    func applyTimerLink(_ request: TimerLinkRequest) async -> TimerLinkApplicationResult {
         guard !isRunning else {
             return .rejectedWhileTimerIsActive
         }
 
         clearTrackedAlarms()
         setReadyTimer(duration: request.duration, isRepeatEnabled: false)
+        await synchronizeLiveActivity(allowStart: false)
         return .configured
     }
 
@@ -125,7 +130,7 @@ final class TimerViewModel {
         }
     }
 
-    func reset() {
+    func reset() async {
         clearTrackedAlarms()
         stopRefreshing()
         currentDate = clock.now()
@@ -133,11 +138,17 @@ final class TimerViewModel {
         isRepeatEnabled = false
         isAwaitingRepeatCycleAcknowledgement = false
         persist()
+        await synchronizeLiveActivity(allowStart: false)
     }
 
-    func refresh() {
+    func refresh() async {
         currentDate = clock.now()
+        let previousState = state
         refreshTimer(allowingRepeat: isApplicationActive && isRepeatEnabled)
+
+        if state != previousState {
+            await synchronizeLiveActivity(allowStart: false)
+        }
     }
 
     func applicationDidBecomeActive() async {
@@ -145,10 +156,11 @@ final class TimerViewModel {
         isApplicationActive = true
         synchronizeAlarmStateFromStore()
 
-        if let activeAlarmIDs = try? alarmScheduler.scheduledAlarmIDs() {
-            await reconcileAlarms(activeAlarmIDs: activeAlarmIDs)
+        if let alarmStatus = try? alarmScheduler.currentAlarmStatus() {
+            await reconcileAlarms(alarmStatus: alarmStatus)
         } else {
             refreshTimer(allowingRepeat: isRepeatEnabled)
+            await synchronizeLiveActivity(allowStart: true)
         }
 
         if isRunning {
@@ -168,7 +180,7 @@ final class TimerViewModel {
 
         if isRunning {
             if isRepeatEnabled {
-                disableRepeatKeepingCurrentAlarm()
+                await disableRepeatKeepingCurrentAlarm()
             } else {
                 await convertRunningTimerToRepeat()
             }
@@ -257,7 +269,7 @@ final class TimerViewModel {
         self.oneShotDeadline = nil
         loopAlarmSession = session
         isRepeatEnabled = true
-        beginRunning(deadline: session.fireDate(for: nextCycleIndex))
+        await beginRunning(deadline: session.fireDate(for: nextCycleIndex))
 
         if hasFailure {
             alarmIssue = .limitedRepeatCoverage
@@ -301,6 +313,7 @@ final class TimerViewModel {
             isAwaitingRepeatCycleAcknowledgement = false
             refreshTimer(allowingRepeat: isApplicationActive && isRepeatEnabled)
             persist()
+            await synchronizeLiveActivity(allowStart: false)
 
             if hasFailure {
                 alarmIssue = .limitedRepeatCoverage
@@ -317,6 +330,7 @@ final class TimerViewModel {
         }
         self.oneShotAlarmID = nil
         setReadyTimer(duration: selectedDuration, isRepeatEnabled: isRepeatEnabled)
+        await synchronizeLiveActivity(allowStart: false)
     }
 
     func cancelAlarm() async {
@@ -325,7 +339,7 @@ final class TimerViewModel {
         }
 
         if isAwaitingRepeatCycleAcknowledgement {
-            reset()
+            await reset()
         } else {
             await acknowledgeCompletion()
         }
@@ -373,7 +387,7 @@ final class TimerViewModel {
         oneShotAlarmID = alarmID
         oneShotDeadline = deadline
         loopAlarmSession = nil
-        beginRunning(deadline: deadline)
+        await beginRunning(deadline: deadline)
     }
 
     private func startRepeatingTimer() async {
@@ -408,7 +422,7 @@ final class TimerViewModel {
         oneShotAlarmID = nil
         oneShotDeadline = nil
         loopAlarmSession = session
-        beginRunning(deadline: deadline)
+        await beginRunning(deadline: deadline)
 
         if hasFailure {
             alarmIssue = .limitedRepeatCoverage
@@ -461,17 +475,19 @@ final class TimerViewModel {
         loopAlarmSession = session
         isRepeatEnabled = true
         persist()
+        await synchronizeLiveActivity(allowStart: true)
 
         if hasFailure {
             alarmIssue = .limitedRepeatCoverage
         }
     }
 
-    private func disableRepeatKeepingCurrentAlarm() {
+    private func disableRepeatKeepingCurrentAlarm() async {
         guard case let .running(deadline) = state, let session = loopAlarmSession else {
             isRepeatEnabled = false
             loopAlarmSession = nil
             persist()
+            await synchronizeLiveActivity(allowStart: false)
             return
         }
 
@@ -489,6 +505,7 @@ final class TimerViewModel {
         isRepeatEnabled = false
         isAwaitingRepeatCycleAcknowledgement = false
         persist()
+        await synchronizeLiveActivity(allowStart: true)
     }
 
     private func authorizeAlarms() async -> Bool {
@@ -505,11 +522,12 @@ final class TimerViewModel {
         }
     }
 
-    private func beginRunning(deadline: Date) {
+    private func beginRunning(deadline: Date) async {
         state = .running(deadline: deadline)
         isAwaitingRepeatCycleAcknowledgement = false
         persist()
         startRefreshing()
+        await synchronizeLiveActivity(allowStart: true)
     }
 
     private func refreshTimer(allowingRepeat: Bool) {
@@ -638,7 +656,7 @@ final class TimerViewModel {
                     return
                 }
 
-                self.refresh()
+                await self.refresh()
 
                 guard self.isRunning else {
                     return
@@ -656,7 +674,7 @@ final class TimerViewModel {
         let updates = alarmScheduler.alarmUpdates()
 
         alarmUpdatesTask = Task { [weak self] in
-            for await activeAlarmIDs in updates {
+            for await alarmStatus in updates {
                 guard let self else {
                     return
                 }
@@ -665,13 +683,13 @@ final class TimerViewModel {
                     continue
                 }
 
-                let latestAlarmIDs = (try? self.alarmScheduler.scheduledAlarmIDs()) ?? activeAlarmIDs
-                await self.reconcileAlarms(activeAlarmIDs: latestAlarmIDs)
+                let latestStatus = (try? self.alarmScheduler.currentAlarmStatus()) ?? alarmStatus
+                await self.reconcileAlarms(alarmStatus: latestStatus)
             }
         }
     }
 
-    private func reconcileAlarms(activeAlarmIDs: Set<UUID>) async {
+    private func reconcileAlarms(alarmStatus: TimerAlarmStatus) async {
         guard !isManagingAlarmQueue else {
             return
         }
@@ -681,7 +699,17 @@ final class TimerViewModel {
         currentDate = clock.now()
         synchronizeAlarmStateFromStore()
 
-        if let oneShotAlarmID, !activeAlarmIDs.contains(oneShotAlarmID) {
+        if let oneShotAlarmID, alarmStatus.alertingIDs.contains(oneShotAlarmID), let oneShotDeadline {
+            currentDate = max(currentDate, oneShotDeadline)
+        }
+
+        if let loopAlarmSession {
+            for entry in loopAlarmSession.entries where alarmStatus.alertingIDs.contains(entry.id) {
+                currentDate = max(currentDate, entry.fireDate)
+            }
+        }
+
+        if let oneShotAlarmID, !alarmStatus.activeIDs.contains(oneShotAlarmID) {
             self.oneShotAlarmID = nil
             self.oneShotDeadline = nil
 
@@ -696,7 +724,7 @@ final class TimerViewModel {
         }
 
         if var session = loopAlarmSession {
-            let removedEntries = session.entries.filter { !activeAlarmIDs.contains($0.id) }
+            let removedEntries = session.entries.filter { !alarmStatus.activeIDs.contains($0.id) }
 
             if let latestDismissedCycle = removedEntries
                 .filter({ $0.fireDate <= currentDate })
@@ -725,11 +753,54 @@ final class TimerViewModel {
         refreshTimer(allowingRepeat: isRepeatEnabled)
         isAwaitingRepeatCycleAcknowledgement = hasUnacknowledgedDueLoopAlarm
         persist()
+        await synchronizeLiveActivity(allowStart: isApplicationActive)
+    }
+
+    private func synchronizeLiveActivity(allowStart: Bool) async {
+        let duration = selectedDuration.timerTimeInterval
+        let activityState: TimerLiveActivityState
+
+        switch state {
+        case .ready:
+            activityState = .inactive
+        case let .running(deadline):
+            if let sessionID = loopAlarmSession?.id ?? oneShotAlarmID {
+                activityState = .countdown(
+                    sessionID: sessionID,
+                    startDate: deadline.addingTimeInterval(-duration),
+                    deadline: deadline
+                )
+            } else {
+                activityState = .inactive
+            }
+        case .finished:
+            if let oneShotAlarmID, let oneShotDeadline {
+                activityState = .finished(
+                    sessionID: oneShotAlarmID,
+                    startDate: oneShotDeadline.addingTimeInterval(-duration),
+                    deadline: oneShotDeadline
+                )
+            } else {
+                activityState = .inactive
+            }
+        }
+
+        await liveActivityManager.synchronize(activityState, allowStart: allowStart)
     }
 
     private func synchronizeAlarmStateFromStore() {
         guard let snapshot = timerStateStore.load() else {
             return
+        }
+
+        if snapshot.state == .ready,
+           snapshot.oneShotAlarmID == nil,
+           snapshot.loopAlarmSession == nil,
+           (state == .finished || (state.isRunning && !isRepeatEnabled)) {
+            state = .ready
+            isRepeatEnabled = false
+            isAwaitingRepeatCycleAcknowledgement = false
+            stopRefreshing()
         }
 
         oneShotAlarmID = snapshot.oneShotAlarmID
